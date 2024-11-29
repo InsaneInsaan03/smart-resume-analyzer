@@ -61,43 +61,92 @@ def show_pdf(file_path):
     try:
         st.write("### Resume Preview")
         
-        # Read PDF
+        # Read the PDF file
         with open(file_path, "rb") as f:
-            base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+            pdf_bytes = f.read()
         
-        # Embedding PDF in HTML
-        pdf_display = f"""
-            <div style="display: flex; justify-content: center;">
-                <object data="data:application/pdf;base64,{base64_pdf}" type="application/pdf" width="800px" height="800px">
-                    <p>It appears you don't have a PDF plugin for this browser.</p>
-                </object>
-            </div>
+        # Display PDF using HTML with multiple fallback options
+        pdf_b64 = base64.b64encode(pdf_bytes).decode('utf-8')
+        
+        # Custom CSS for the container
+        st.markdown(
             """
+            <style>
+            .pdf-container {
+                width: 100%;
+                height: 800px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                overflow: hidden;
+                margin-bottom: 20px;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
         
-        # Display the PDF
+        # Try multiple PDF display methods
+        pdf_display = f"""
+            <div class="pdf-container">
+                <!-- Primary viewer -->
+                <embed
+                    src="data:application/pdf;base64,{pdf_b64}"
+                    type="application/pdf"
+                    width="100%"
+                    height="100%"
+                />
+                
+                <!-- Fallback 1: PDF.js viewer -->
+                <iframe
+                    src="https://docs.google.com/viewer?embedded=true&url=data:application/pdf;base64,{pdf_b64}"
+                    width="100%"
+                    height="100%"
+                    frameborder="0"
+                >
+                    <!-- Fallback 2: Direct base64 link -->
+                    <a href="data:application/pdf;base64,{pdf_b64}" target="_blank">
+                        Click here to view the PDF
+                    </a>
+                </iframe>
+            </div>
+        """
+        
         st.markdown(pdf_display, unsafe_allow_html=True)
         
-        # Add a download button
-        with open(file_path, "rb") as f:
+        # Add buttons in columns for better layout
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Download button
             st.download_button(
-                label="📥 Download Resume",
-                data=f,
+                label="📥 Download PDF",
+                data=pdf_bytes,
                 file_name=os.path.basename(file_path),
                 mime="application/pdf"
             )
         
-        # Add a direct link to open in new tab
-        st.markdown(f"""
-            <p style="text-align: center;">
-                <a href="data:application/pdf;base64,{base64_pdf}" target="_blank" 
-                   style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; 
-                          color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;">
+        with col2:
+            # Open in new tab button
+            st.markdown(
+                f'''
+                <a href="data:application/pdf;base64,{pdf_b64}" 
+                   target="_blank" 
+                   style="
+                    display: inline-block;
+                    padding: 0.5rem 1rem;
+                    background-color: #4CAF50;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 4px;
+                    text-align: center;
+                    margin: 0.5rem 0;
+                    width: 100%;
+                ">
                     🔎 Open in New Tab
                 </a>
-            </p>
-            """, 
-            unsafe_allow_html=True
-        )
+                ''',
+                unsafe_allow_html=True
+            )
         
     except Exception as e:
         st.error("Error displaying the PDF. Please try downloading it.")
