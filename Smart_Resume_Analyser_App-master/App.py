@@ -101,6 +101,34 @@ def ensure_dir(dir_path):
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
 
+def pdf_reader(file):
+    resource_manager = PDFResourceManager()
+    fake_file_handle = io.StringIO()
+    converter = TextConverter(resource_manager, fake_file_handle, laparams=LAParams())
+    page_interpreter = PDFPageInterpreter(resource_manager, converter)
+    with open(file, 'rb') as fh:
+        for page in PDFPage.get_pages(fh,
+                                    caching=True,
+                                    check_extractable=True):
+            page_interpreter.process_page(page)
+            print(page)
+        text = fake_file_handle.getvalue()
+
+    # close open handles
+    converter.close()
+    fake_file_handle.close()
+    return text
+
+def get_table_download_link(df, filename, text):
+    """Generates a link allowing the data in a given panda dataframe to be downloaded
+    in:  dataframe
+    out: href string
+    """
+    csv = df.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
+    href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">{text}</a>'
+    return href
+
 def run():
     # Ensure required directories exist
     ensure_dir('./Uploaded_Resumes')
