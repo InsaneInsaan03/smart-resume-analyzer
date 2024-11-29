@@ -59,36 +59,66 @@ def pdf_reader(file):
 
 def show_pdf(file_path):
     try:
+        # Read PDF file
         with open(file_path, "rb") as f:
             pdf_bytes = f.read()
         
-        # Display PDF using st.components.v1.iframe
         st.write("### Resume Preview")
+        
+        # Display PDF directly
         base64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
-        pdf_display = f'<embed src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf">'
+        # Embed PDF viewer with fallback
+        pdf_display = f"""
+            <div style="display: flex; justify-content: center; width: 100%; height: 600px; margin-bottom: 20px;">
+                <iframe 
+                    src="data:application/pdf;base64,{base64_pdf}" 
+                    width="100%" 
+                    height="100%"
+                    style="border: 1px solid #ccc; border-radius: 5px;"
+                    type="application/pdf"
+                >
+                    <p>Your browser doesn't support embedded PDFs. You can view it below:</p>
+                </iframe>
+            </div>
+        """
         st.markdown(pdf_display, unsafe_allow_html=True)
         
-        # Always show download button
-        st.download_button(
-            label="📥 Download Resume",
-            data=pdf_bytes,
-            file_name=os.path.basename(file_path),
-            mime="application/pdf",
-            help="Click here to download the resume"
-        )
+        # Fallback buttons in case the display doesn't work
+        col1, col2 = st.columns(2)
+        with col1:
+            st.download_button(
+                label="📥 Download Resume",
+                data=pdf_bytes,
+                file_name=os.path.basename(file_path),
+                mime="application/pdf",
+                help="Click to download the resume"
+            )
         
-        # Display a direct link as another option
-        st.markdown(f'''
-            <p style="text-align: center;">
-                <a href="data:application/pdf;base64,{base64_pdf}" download="{os.path.basename(file_path)}">
-                    🔗 Open PDF in new tab
+        with col2:
+            # Create a button that opens PDF in a new tab
+            st.markdown(f'''
+                <a href="data:application/pdf;base64,{base64_pdf}" target="_blank">
+                    <button style="
+                        background-color: #4CAF50;
+                        border: none;
+                        color: white;
+                        padding: 10px 24px;
+                        text-align: center;
+                        text-decoration: none;
+                        display: inline-block;
+                        font-size: 16px;
+                        margin: 4px 2px;
+                        cursor: pointer;
+                        border-radius: 4px;">
+                        🔎 Open in New Tab
+                    </button>
                 </a>
-            </p>
-            ''', 
-            unsafe_allow_html=True
-        )
+            ''', unsafe_allow_html=True)
+        
     except Exception as e:
-        st.error("Error displaying the PDF. Please use the download button below.")
+        st.error("Error displaying the PDF. Please try the download option.")
+        st.error(f"Error details: {str(e)}")
+        # Provide download as fallback
         try:
             with open(file_path, "rb") as f:
                 st.download_button(
@@ -99,21 +129,6 @@ def show_pdf(file_path):
                 )
         except Exception as e:
             st.error("Could not process the PDF file. Please ensure it's a valid PDF document.")
-
-
-def course_recommender(course_list):
-    st.subheader("**Courses & Certificates🎓 Recommendations**")
-    c = 0
-    rec_course = []
-    no_of_reco = st.slider('Choose Number of Course Recommendations:', 1, 10, 4)
-    random.shuffle(course_list)
-    for c_name, c_link in course_list:
-        c += 1
-        st.markdown(f"({c}) [{c_name}]({c_link})")
-        rec_course.append(c_name)
-        if c == no_of_reco:
-            break
-    return rec_course
 
 
 # Create a database connection
