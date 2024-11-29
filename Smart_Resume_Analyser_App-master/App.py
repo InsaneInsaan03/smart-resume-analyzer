@@ -31,24 +31,42 @@ def show_pdf(file_path):
         # Convert PDF to base64
         base64_pdf = base64.b64encode(PDFbyte).decode('utf-8')
         
-        # Embed PDF viewer
-        pdf_display = F'<iframe src="https://docs.google.com/gview?url=data:application/pdf;base64,{base64_pdf}&embedded=true" width="700" height="600" frameborder="0"></iframe>'
-        st.markdown(pdf_display, unsafe_allow_html=True)
+        # Create two columns
+        col1, col2 = st.columns([2, 1])
         
-        # Download button
-        st.download_button(
-            label="📥 Download Resume",
-            data=PDFbyte,
-            file_name=os.path.basename(file_path),
-            mime='application/pdf'
-        )
+        with col1:
+            # Embed PDF viewer using PDF.js
+            pdf_display = f'''
+                <iframe
+                    src="https://mozilla.github.io/pdf.js/web/viewer.html?file=data:application/pdf;base64,{base64_pdf}"
+                    width="100%"
+                    height="800px"
+                    style="border: none; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);"
+                ></iframe>
+            '''
+            st.markdown(pdf_display, unsafe_allow_html=True)
         
-        # Show file info
-        file_size = os.path.getsize(file_path) / 1024  # Convert to KB
-        st.info(f"""
-        📄 Filename: {os.path.basename(file_path)}
-        📏 Size: {file_size:.1f} KB
-        """)
+        with col2:
+            # Download button
+            st.download_button(
+                label="📥 Download Resume",
+                data=PDFbyte,
+                file_name=os.path.basename(file_path),
+                mime='application/pdf',
+                use_container_width=True
+            )
+            
+            # Show file info
+            file_size = os.path.getsize(file_path) / 1024  # Convert to KB
+            st.info(f"""
+            📄 Filename: {os.path.basename(file_path)}
+            📏 Size: {file_size:.1f} KB
+            
+            ℹ️ If preview doesn't load:
+            1. Try the download button
+            2. Clear your browser cache
+            3. Use a different browser
+            """)
             
     except Exception as e:
         st.error(f"Error processing PDF: {e}")
