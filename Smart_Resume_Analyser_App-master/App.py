@@ -19,62 +19,6 @@ import sqlite3
 import os
 import plotly.express as px
 from Courses import ds_course, web_course, android_course, ios_course, uiux_course, resume_videos, interview_videos
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
-
-app = FastAPI()
-
-# Enable CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.get("/get_pdf/{filename}")
-async def get_pdf(filename: str):
-    file_path = f"./Uploaded_Resumes/{filename}"
-    return FileResponse(file_path, media_type='application/pdf', filename=filename)
-
-def fetch_yt_video(link):
-    # video = pafy.new(link)
-    # return video.title
-    pass
-
-
-def get_table_download_link(df, filename, text):
-    """Generates a link allowing the data in a given panda dataframe to be downloaded
-    in:  dataframe
-    out: href string
-    """
-    csv = df.to_csv(index=False)
-    b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
-    # href = f'<a href="data:file/csv;base64,{b64}">Download Report</a>'
-    href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">{text}</a>'
-    return href
-
-
-def pdf_reader(file):
-    resource_manager = PDFResourceManager()
-    fake_file_handle = io.StringIO()
-    converter = TextConverter(resource_manager, fake_file_handle, laparams=LAParams())
-    page_interpreter = PDFPageInterpreter(resource_manager, converter)
-    with open(file, 'rb') as fh:
-        for page in PDFPage.get_pages(fh,
-                                      caching=True,
-                                      check_extractable=True):
-            page_interpreter.process_page(page)
-            print(page)
-        text = fake_file_handle.getvalue()
-
-    # close open handles
-    converter.close()
-    fake_file_handle.close()
-    return text
-
 
 def show_pdf(file_path):
     try:
@@ -83,40 +27,31 @@ def show_pdf(file_path):
         # Read PDF content
         with open(file_path, "rb") as f:
             PDFbyte = f.read()
+            
+        # Convert PDF to base64
+        base64_pdf = base64.b64encode(PDFbyte).decode('utf-8')
         
-        # Create columns for multiple options
-        col1, col2 = st.columns(2)
+        # Embed PDF viewer
+        pdf_display = F'<iframe src="https://docs.google.com/gview?url=data:application/pdf;base64,{base64_pdf}&embedded=true" width="700" height="600" frameborder="0"></iframe>'
+        st.markdown(pdf_display, unsafe_allow_html=True)
         
-        with col1:
-            # Download button
-            st.download_button(
-                label="📥 Download Resume",
-                data=PDFbyte,
-                file_name=os.path.basename(file_path),
-                mime='application/pdf',
-                key='download-resume'
-            )
-        
-        with col2:
-            # External viewer option using Google Docs viewer
-            file_name = os.path.basename(file_path)
-            st.markdown(
-                f'<a href="https://docs.google.com/viewer?url={st.secrets.get("APP_URL", "")}/get_pdf/{file_name}" target="_blank">'
-                '🔎 Open in PDF Viewer</a>',
-                unsafe_allow_html=True
-            )
+        # Download button
+        st.download_button(
+            label="📥 Download Resume",
+            data=PDFbyte,
+            file_name=os.path.basename(file_path),
+            mime='application/pdf'
+        )
         
         # Show file info
         file_size = os.path.getsize(file_path) / 1024  # Convert to KB
         st.info(f"""
-        📄 Filename: {file_name}
+        📄 Filename: {os.path.basename(file_path)}
         📏 Size: {file_size:.1f} KB
-        ℹ️ Tip: Use the PDF Viewer for quick preview or download for best quality
         """)
             
     except Exception as e:
         st.error(f"Error processing PDF: {e}")
-
 
 # Create a database connection
 def init_db():
