@@ -418,15 +418,14 @@ def run():
                                                  'Recommended Course'])
                 st.dataframe(df)
                 st.markdown(get_table_download_link(df, 'User_Data.csv', 'Download Report'), unsafe_allow_html=True)
+                
                 ## Admin Side Data
                 query = 'select * from user_data;'
                 plot_data = pd.read_sql(query, connection)
 
                 ## Pie chart for predicted field recommendations
-                labels = plot_data.Predicted_Field.unique()
-                print(labels)
-                values = plot_data.Predicted_Field.value_counts()
-                print(values)
+                labels = plot_data['reco_field'].unique()
+                values = plot_data['reco_field'].value_counts()
                 st.subheader("📈 **Pie-Chart for Predicted Field Recommendations**")
                 
                 # Create a DataFrame for the pie chart
@@ -440,9 +439,9 @@ def run():
                 st.plotly_chart(fig)
 
                 ### Pie chart for User's👨‍💻 Experienced Level
-                labels = plot_data.User_level.unique()
-                values = plot_data.User_level.value_counts()
-                st.subheader("📈 ** Pie-Chart for User's👨‍💻 Experienced Level**")
+                labels = plot_data['cand_level'].unique()
+                values = plot_data['cand_level'].value_counts()
+                st.subheader("📈 **Pie-Chart for User's👨‍💻 Experience Level**")
                 
                 # Create a DataFrame for the pie chart
                 pie_chart_data = pd.DataFrame({
@@ -451,7 +450,7 @@ def run():
                 })
                 
                 fig = px.pie(pie_chart_data, values='Count', names='Level', 
-                           title="Pie-Chart📈 for User's👨‍💻 Experienced Level")
+                           title="User's Experience Level")
                 st.plotly_chart(fig)
 
 
