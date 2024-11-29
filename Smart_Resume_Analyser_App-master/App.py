@@ -129,6 +129,26 @@ def get_table_download_link(df, filename, text):
     href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">{text}</a>'
     return href
 
+def course_recommender(course_list):
+    st.subheader("**Courses & Certificates🎓 Recommendations**")
+    c = 0
+    rec_course = []
+    no_of_reco = st.slider('Choose Number of Course Recommendations:', 1, 10, 4)
+    random.shuffle(course_list)
+    for c_name, c_link in course_list[0:no_of_reco]:
+        c += 1
+        st.markdown(f"({c}) [{c_name}]({c_link})")
+        rec_course.append(c_name)
+    return rec_course
+
+def fetch_yt_video(link):
+    try:
+        # video = pafy.new(link)
+        # return video.title
+        return "Video Title" # Placeholder since pafy is not being used
+    except:
+        return link
+
 def run():
     # Ensure required directories exist
     ensure_dir('./Uploaded_Resumes')
