@@ -59,107 +59,29 @@ def pdf_reader(file):
 
 def show_pdf(file_path):
     try:
-        st.write("### Resume Preview")
-        
-        # Read the PDF file
         with open(file_path, "rb") as f:
-            pdf_bytes = f.read()
+            base64_pdf = base64.b64encode(f.read()).decode('utf-8')
         
-        # Display PDF using HTML with multiple fallback options
-        pdf_b64 = base64.b64encode(pdf_bytes).decode('utf-8')
+        # Embedding PDF in HTML
+        pdf_display = f'''
+            <iframe src="data:application/pdf;base64,{base64_pdf}" width="700" height="1000" type="application/pdf"></iframe>
+        '''
         
-        # Custom CSS for the container
-        st.markdown(
-            """
-            <style>
-            .pdf-container {
-                width: 100%;
-                height: 800px;
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                overflow: hidden;
-                margin-bottom: 20px;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-        
-        # Try multiple PDF display methods
-        pdf_display = f"""
-            <div class="pdf-container">
-                <!-- Primary viewer -->
-                <embed
-                    src="data:application/pdf;base64,{pdf_b64}"
-                    type="application/pdf"
-                    width="100%"
-                    height="100%"
-                />
-                
-                <!-- Fallback 1: PDF.js viewer -->
-                <iframe
-                    src="https://docs.google.com/viewer?embedded=true&url=data:application/pdf;base64,{pdf_b64}"
-                    width="100%"
-                    height="100%"
-                    frameborder="0"
-                >
-                    <!-- Fallback 2: Direct base64 link -->
-                    <a href="data:application/pdf;base64,{pdf_b64}" target="_blank">
-                        Click here to view the PDF
-                    </a>
-                </iframe>
-            </div>
-        """
-        
+        # Displaying PDF
         st.markdown(pdf_display, unsafe_allow_html=True)
         
-        # Add buttons in columns for better layout
-        col1, col2 = st.columns(2)
+        # Download button
+        with open(file_path, "rb") as pdf_file:
+            PDFbyte = pdf_file.read()
         
-        with col1:
-            # Download button
-            st.download_button(
-                label="📥 Download PDF",
-                data=pdf_bytes,
-                file_name=os.path.basename(file_path),
-                mime="application/pdf"
-            )
-        
-        with col2:
-            # Open in new tab button
-            st.markdown(
-                f'''
-                <a href="data:application/pdf;base64,{pdf_b64}" 
-                   target="_blank" 
-                   style="
-                    display: inline-block;
-                    padding: 0.5rem 1rem;
-                    background-color: #4CAF50;
-                    color: white;
-                    text-decoration: none;
-                    border-radius: 4px;
-                    text-align: center;
-                    margin: 0.5rem 0;
-                    width: 100%;
-                ">
-                    🔎 Open in New Tab
-                </a>
-                ''',
-                unsafe_allow_html=True
-            )
-        
+        st.download_button(
+            label="📥 Download Resume",
+            data=PDFbyte,
+            file_name=os.path.basename(file_path),
+            mime='application/pdf'
+        )
     except Exception as e:
-        st.error("Error displaying the PDF. Please try downloading it.")
-        try:
-            with open(file_path, "rb") as f:
-                st.download_button(
-                    label="⚠️ Download PDF",
-                    data=f,
-                    file_name=os.path.basename(file_path),
-                    mime="application/pdf"
-                )
-        except Exception as e:
-            st.error("Could not process the PDF file. Please ensure it's a valid PDF document.")
+        st.error(f"Error displaying PDF: {e}")
 
 
 # Create a database connection
