@@ -59,29 +59,37 @@ def pdf_reader(file):
 
 def show_pdf(file_path):
     try:
-        with open(file_path, "rb") as f:
-            base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+        # Display a message about the PDF
+        st.write("### Resume Preview")
+        st.write("For security reasons, direct PDF preview is disabled in the deployed version.")
+        st.write("Please use the download button below to view the PDF:")
         
-        # Embedding PDF in HTML
-        pdf_display = f'''
-            <iframe src="data:application/pdf;base64,{base64_pdf}" width="700" height="1000" type="application/pdf"></iframe>
-        '''
+        # Create two columns for better layout
+        col1, col2 = st.columns([1, 2])
         
-        # Displaying PDF
-        st.markdown(pdf_display, unsafe_allow_html=True)
+        with col1:
+            # Provide download button
+            with open(file_path, "rb") as pdf_file:
+                PDFbyte = pdf_file.read()
+                
+            st.download_button(
+                label="📥 Download Resume",
+                data=PDFbyte,
+                file_name=os.path.basename(file_path),
+                mime='application/pdf',
+                key='download-resume'
+            )
         
-        # Download button
-        with open(file_path, "rb") as pdf_file:
-            PDFbyte = pdf_file.read()
-        
-        st.download_button(
-            label="📥 Download Resume",
-            data=PDFbyte,
-            file_name=os.path.basename(file_path),
-            mime='application/pdf'
-        )
+        # Show file information
+        with col2:
+            file_size = os.path.getsize(file_path) / 1024  # Convert to KB
+            st.info(f"""
+            📄 Filename: {os.path.basename(file_path)}
+            📏 Size: {file_size:.1f} KB
+            """)
+            
     except Exception as e:
-        st.error(f"Error displaying PDF: {e}")
+        st.error(f"Error processing PDF: {e}")
 
 
 # Create a database connection
