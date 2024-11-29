@@ -59,19 +59,41 @@ def pdf_reader(file):
 
 def show_pdf(file_path):
     try:
+        # First try displaying with base64 encoding
         with open(file_path, "rb") as f:
             base64_pdf = base64.b64encode(f.read()).decode('utf-8')
-        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="800" type="application/pdf"></iframe>'
+        
+        # Use HTML object tag as primary viewer
+        pdf_display = f'''
+            <object data="data:application/pdf;base64,{base64_pdf}" type="application/pdf" width="100%" height="800">
+                <iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="800" type="application/pdf">
+                    <p>This browser does not support PDF viewing. Please <a href="data:application/pdf;base64,{base64_pdf}" download="resume.pdf">download the PDF</a> to view it.</p>
+                </iframe>
+            </object>
+        '''
         st.markdown(pdf_display, unsafe_allow_html=True)
-    except Exception as e:
-        st.error(f"Error displaying PDF. Please try downloading it instead.")
+        
+        # Add a download button as backup
         with open(file_path, "rb") as f:
             st.download_button(
-                label="Download PDF",
+                label="📥 Download PDF",
                 data=f,
                 file_name=os.path.basename(file_path),
                 mime="application/pdf"
             )
+    except Exception as e:
+        st.error(f"Error displaying PDF: {str(e)}")
+        try:
+            # Fallback to basic download
+            with open(file_path, "rb") as f:
+                st.download_button(
+                    label="⚠️ Error viewing PDF. Click here to download instead",
+                    data=f,
+                    file_name=os.path.basename(file_path),
+                    mime="application/pdf"
+                )
+        except Exception as e:
+            st.error("Could not process the PDF file. Please ensure it's a valid PDF document.")
 
 
 def course_recommender(course_list):
