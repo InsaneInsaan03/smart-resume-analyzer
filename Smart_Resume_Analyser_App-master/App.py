@@ -23,49 +23,31 @@ from Courses import ds_course, web_course, android_course, ios_course, uiux_cour
 def show_pdf(file_path):
     try:
         st.write("### Resume Preview")
+        st.write("📄 For security reasons, please use the download button to view the PDF.")
         
-        # Read PDF content
-        with open(file_path, "rb") as f:
-            PDFbyte = f.read()
-            
-        # Convert PDF to base64
-        base64_pdf = base64.b64encode(PDFbyte).decode('utf-8')
-        
-        # Create two columns
-        col1, col2 = st.columns([2, 1])
+        # Create columns for better layout
+        col1, col2 = st.columns([1, 2])
         
         with col1:
-            # Embed PDF viewer using PDF.js
-            pdf_display = f'''
-                <iframe
-                    src="https://mozilla.github.io/pdf.js/web/viewer.html?file=data:application/pdf;base64,{base64_pdf}"
-                    width="100%"
-                    height="800px"
-                    style="border: none; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);"
-                ></iframe>
-            '''
-            st.markdown(pdf_display, unsafe_allow_html=True)
-        
-        with col2:
-            # Download button
+            # Read and provide download button
+            with open(file_path, "rb") as pdf_file:
+                PDFbyte = pdf_file.read()
+                
             st.download_button(
                 label="📥 Download Resume",
                 data=PDFbyte,
                 file_name=os.path.basename(file_path),
                 mime='application/pdf',
-                use_container_width=True
+                key='download-resume'
             )
-            
-            # Show file info
+        
+        with col2:
+            # Show file information
             file_size = os.path.getsize(file_path) / 1024  # Convert to KB
             st.info(f"""
-            📄 Filename: {os.path.basename(file_path)}
-            📏 Size: {file_size:.1f} KB
-            
-            ℹ️ If preview doesn't load:
-            1. Try the download button
-            2. Clear your browser cache
-            3. Use a different browser
+            📋 File Information:
+            • Name: {os.path.basename(file_path)}
+            • Size: {file_size:.1f} KB
             """)
             
     except Exception as e:
