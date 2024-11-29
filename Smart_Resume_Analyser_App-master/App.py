@@ -115,19 +115,35 @@ def insert_data(name, email, res_score, timestamp, no_of_pages, reco_field, cand
 
 st.set_page_config(
     page_title="Smart Resume Analyzer",
-    page_icon='./Logo/SRA_Logo.ico',
+    page_icon="📄",
 )
 
 
+def create_default_logo():
+    # Create a simple colored rectangle as default logo
+    img = Image.new('RGB', (250, 250), color='#2E86C1')
+    return img
+
+def ensure_dir(dir_path):
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
 def run():
+    # Ensure required directories exist
+    ensure_dir('./Uploaded_Resumes')
+    
     st.title("Smart Resume Analyser")
     st.sidebar.markdown("# Choose User")
     activities = ["Normal User", "Admin"]
     choice = st.sidebar.selectbox("Choose among the given options:", activities)
     # link = '[©Developed by Spidy20](http://github.com/spidy20)'
     # st.sidebar.markdown(link, unsafe_allow_html=True)
-    img = Image.open('./Logo/SRA_Logo.jpg')
-    img = img.resize((250, 250))
+    # Try to load logo, use default if file not found
+    try:
+        img = Image.open('./Logo/SRA_Logo.jpg')
+        img = img.resize((250, 250))
+    except (FileNotFoundError, IOError):
+        img = create_default_logo()
     st.image(img)
 
     if choice == 'Normal User':
