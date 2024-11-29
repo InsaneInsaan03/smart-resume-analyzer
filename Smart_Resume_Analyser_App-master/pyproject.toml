@@ -1,0 +1,21 @@
+[tool.briefcase]
+project_name = "Smart Resume Analyzer"
+bundle = "com.insaneinsaan03.resumeanalyzer"
+version = "0.0.1"
+url = "https://github.com/InsaneInsaan03/WebApp"
+license = "MIT license"
+author = "InsaneInsaan03"
+author_email = "your.email@example.com"
+
+[tool.briefcase.app.resumeanalyzer]
+formal_name = "Smart Resume Analyzer"
+description = "A mobile app for analyzing resumes"
+icon = "src/resumeanalyzer/resources/icon"
+sources = ["src/resumeanalyzer"]
+requires = [
+    "toga>=0.4.0",
+    "pandas>=2.2.0",
+    "nltk>=3.9.0",
+    "pdfminer3>=2018.12.3.0",
+    "pillow>=11.0.0"
+]
