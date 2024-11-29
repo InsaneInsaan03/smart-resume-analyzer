@@ -61,82 +61,46 @@ def show_pdf(file_path):
     try:
         st.write("### Resume Preview")
         
-        # Extract text from PDF
-        def extract_text_from_pdf(pdf_path):
-            resource_manager = PDFResourceManager()
-            fake_file_handle = io.StringIO()
-            converter = TextConverter(resource_manager, fake_file_handle, laparams=LAParams())
-            page_interpreter = PDFPageInterpreter(resource_manager, converter)
-            
-            with open(pdf_path, 'rb') as fh:
-                for page in PDFPage.get_pages(fh, caching=True, check_extractable=True):
-                    page_interpreter.process_page(page)
-                
-            text = fake_file_handle.getvalue()
-            converter.close()
-            fake_file_handle.close()
-            
-            return text
+        # Read PDF
+        with open(file_path, "rb") as f:
+            base64_pdf = base64.b64encode(f.read()).decode('utf-8')
         
-        # Get PDF text content
-        pdf_text = extract_text_from_pdf(file_path)
+        # Embedding PDF in HTML
+        pdf_display = f"""
+            <div style="display: flex; justify-content: center;">
+                <object data="data:application/pdf;base64,{base64_pdf}" type="application/pdf" width="800px" height="800px">
+                    <p>It appears you don't have a PDF plugin for this browser.</p>
+                </object>
+            </div>
+            """
         
-        # Create two columns
-        col1, col2 = st.columns([2,1])
+        # Display the PDF
+        st.markdown(pdf_display, unsafe_allow_html=True)
         
-        with col1:
-            # Display PDF content in a nice format
-            st.markdown("#### PDF Content:")
-            st.markdown(
-                f"""
-                <div style="
-                    border: 1px solid #ccc;
-                    border-radius: 5px;
-                    padding: 20px;
-                    height: 500px;
-                    overflow-y: auto;
-                    background-color: white;
-                    font-family: monospace;
-                    white-space: pre-wrap;
-                ">
-                    {pdf_text}
-                </div>
-                """,
-                unsafe_allow_html=True
+        # Add a download button
+        with open(file_path, "rb") as f:
+            st.download_button(
+                label="📥 Download Resume",
+                data=f,
+                file_name=os.path.basename(file_path),
+                mime="application/pdf"
             )
         
-        with col2:
-            st.markdown("#### Options:")
-            # Add download button
-            with open(file_path, "rb") as f:
-                pdf_bytes = f.read()
-                st.download_button(
-                    label="📥 Download PDF",
-                    data=pdf_bytes,
-                    file_name=os.path.basename(file_path),
-                    mime="application/pdf",
-                    help="Download the original PDF file"
-                )
-            
-            # Show file info
-            file_size = os.path.getsize(file_path) / 1024  # Convert to KB
-            st.info(f"""
-                **File Information:**
-                - Name: {os.path.basename(file_path)}
-                - Size: {file_size:.1f} KB
-                - Type: PDF Document
-            """)
-            
-            # Add some helpful tips
-            st.markdown("""
-                **Tips:**
-                - Use the scroll bar to view all content
-                - Download the PDF to view original formatting
-                - Content shown here is extracted text only
-            """)
-            
+        # Add a direct link to open in new tab
+        st.markdown(f"""
+            <p style="text-align: center;">
+                <a href="data:application/pdf;base64,{base64_pdf}" target="_blank" 
+                   style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; 
+                          color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;">
+                    🔎 Open in New Tab
+                </a>
+            </p>
+            """, 
+            unsafe_allow_html=True
+        )
+        
     except Exception as e:
-        st.error("Error processing the PDF. Please try downloading it instead.")
+        st.error("Error displaying the PDF. Please try downloading it.")
         try:
             with open(file_path, "rb") as f:
                 st.download_button(
