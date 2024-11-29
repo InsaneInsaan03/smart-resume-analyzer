@@ -2,12 +2,7 @@ import streamlit as st
 import nltk
 from nltk.corpus import stopwords
 nltk.download('stopwords')
-# import spacy
-# custom_nlp = spacy.load("en_core_web_sm")
-
-# Use NLTK instead of spacy for basic NLP tasks
 from nltk.tokenize import word_tokenize
-
 import pandas as pd
 import base64, random
 import time, datetime
@@ -20,9 +15,10 @@ from pdfminer3.converter import TextConverter
 import io, random
 from streamlit_tags import st_tags
 from PIL import Image
-import pymysql
-from Courses import ds_course, web_course, android_course, ios_course, uiux_course, resume_videos, interview_videos
+import sqlite3
+import os
 import plotly.express as px
+from Courses import ds_course, web_course, android_course, ios_course, uiux_course, resume_videos, interview_videos
 
 def fetch_yt_video(link):
     # video = pafy.new(link)
@@ -84,18 +80,35 @@ def course_recommender(course_list):
     return rec_course
 
 
-connection = pymysql.connect(host='localhost', user='root', password='')
-cursor = connection.cursor()
+# Create a database connection
+def init_db():
+    db_path = 'resume_data.db'
+    conn = sqlite3.connect(db_path, check_same_thread=False)
+    c = conn.cursor()
+    
+    # Create table if it doesn't exist
+    c.execute('''CREATE TABLE IF NOT EXISTS user_data
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  name TEXT,
+                  email TEXT,
+                  res_score TEXT,
+                  timestamp TEXT,
+                  no_of_pages TEXT,
+                  reco_field TEXT,
+                  cand_level TEXT,
+                  skills TEXT,
+                  recommended_skills TEXT,
+                  courses TEXT)''')
+    conn.commit()
+    return conn, c
 
+# Initialize database connection
+connection, cursor = init_db()
 
-def insert_data(name, email, res_score, timestamp, no_of_pages, reco_field, cand_level, skills, recommended_skills,
-                courses):
+def insert_data(name, email, res_score, timestamp, no_of_pages, reco_field, cand_level, skills, recommended_skills, courses):
     DB_table_name = 'user_data'
-    insert_sql = "insert into " + DB_table_name + """
-    values (0,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
-    rec_values = (
-    name, email, str(res_score), timestamp, str(no_of_pages), reco_field, cand_level, skills, recommended_skills,
-    courses)
+    insert_sql = f"INSERT INTO {DB_table_name} (name, email, res_score, timestamp, no_of_pages, reco_field, cand_level, skills, recommended_skills, courses) VALUES (?,?,?,?,?,?,?,?,?,?)"
+    rec_values = (name, email, str(res_score), timestamp, str(no_of_pages), reco_field, cand_level, skills, recommended_skills, courses)
     cursor.execute(insert_sql, rec_values)
     connection.commit()
 
@@ -117,28 +130,6 @@ def run():
     img = img.resize((250, 250))
     st.image(img)
 
-    # Create the DB
-    db_sql = """CREATE DATABASE IF NOT EXISTS SRA;"""
-    cursor.execute(db_sql)
-    connection.select_db("sra")
-
-    # Create table
-    DB_table_name = 'user_data'
-    table_sql = "CREATE TABLE IF NOT EXISTS " + DB_table_name + """
-                    (ID INT NOT NULL AUTO_INCREMENT,
-                     Name varchar(100) NOT NULL,
-                     Email_ID VARCHAR(50) NOT NULL,
-                     resume_score VARCHAR(8) NOT NULL,
-                     Timestamp VARCHAR(50) NOT NULL,
-                     Page_no VARCHAR(5) NOT NULL,
-                     Predicted_Field VARCHAR(25) NOT NULL,
-                     User_level VARCHAR(30) NOT NULL,
-                     Actual_skills VARCHAR(300) NOT NULL,
-                     Recommended_skills VARCHAR(300) NOT NULL,
-                     Recommended_courses VARCHAR(600) NOT NULL,
-                     PRIMARY KEY (ID));
-                    """
-    cursor.execute(table_sql)
     if choice == 'Normal User':
         # st.markdown('''<h4 style='text-align: left; color: #d73b5c;'>* Upload your resume, and get smart recommendation based on it."</h4>''',
         #             unsafe_allow_html=True)
