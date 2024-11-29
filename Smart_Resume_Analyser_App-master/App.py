@@ -19,6 +19,25 @@ import sqlite3
 import os
 import plotly.express as px
 from Courses import ds_course, web_course, android_course, ios_course, uiux_course, resume_videos, interview_videos
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/get_pdf/{filename}")
+async def get_pdf(filename: str):
+    file_path = f"./Uploaded_Resumes/{filename}"
+    return FileResponse(file_path, media_type='application/pdf', filename=filename)
 
 def fetch_yt_video(link):
     # video = pafy.new(link)
@@ -59,19 +78,17 @@ def pdf_reader(file):
 
 def show_pdf(file_path):
     try:
-        # Display a message about the PDF
         st.write("### Resume Preview")
-        st.write("For security reasons, direct PDF preview is disabled in the deployed version.")
-        st.write("Please use the download button below to view the PDF:")
         
-        # Create two columns for better layout
-        col1, col2 = st.columns([1, 2])
+        # Read PDF content
+        with open(file_path, "rb") as f:
+            PDFbyte = f.read()
+        
+        # Create columns for multiple options
+        col1, col2 = st.columns(2)
         
         with col1:
-            # Provide download button
-            with open(file_path, "rb") as pdf_file:
-                PDFbyte = pdf_file.read()
-                
+            # Download button
             st.download_button(
                 label="📥 Download Resume",
                 data=PDFbyte,
@@ -80,13 +97,22 @@ def show_pdf(file_path):
                 key='download-resume'
             )
         
-        # Show file information
         with col2:
-            file_size = os.path.getsize(file_path) / 1024  # Convert to KB
-            st.info(f"""
-            📄 Filename: {os.path.basename(file_path)}
-            📏 Size: {file_size:.1f} KB
-            """)
+            # External viewer option using Google Docs viewer
+            file_name = os.path.basename(file_path)
+            st.markdown(
+                f'<a href="https://docs.google.com/viewer?url={st.secrets.get("APP_URL", "")}/get_pdf/{file_name}" target="_blank">'
+                '🔎 Open in PDF Viewer</a>',
+                unsafe_allow_html=True
+            )
+        
+        # Show file info
+        file_size = os.path.getsize(file_path) / 1024  # Convert to KB
+        st.info(f"""
+        📄 Filename: {file_name}
+        📏 Size: {file_size:.1f} KB
+        ℹ️ Tip: Use the PDF Viewer for quick preview or download for best quality
+        """)
             
     except Exception as e:
         st.error(f"Error processing PDF: {e}")
