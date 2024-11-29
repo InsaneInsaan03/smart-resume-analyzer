@@ -65,60 +65,25 @@ def show_pdf(file_path):
         
         st.write("### Resume Preview")
         
-        # Display PDF directly
-        base64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
-        # Embed PDF viewer with fallback
-        pdf_display = f"""
-            <div style="display: flex; justify-content: center; width: 100%; height: 600px; margin-bottom: 20px;">
-                <iframe 
-                    src="data:application/pdf;base64,{base64_pdf}" 
-                    width="100%" 
-                    height="100%"
-                    style="border: 1px solid #ccc; border-radius: 5px;"
-                    type="application/pdf"
-                >
-                    <p>Your browser doesn't support embedded PDFs. You can view it below:</p>
-                </iframe>
-            </div>
-        """
+        # Display PDF using HTML
+        pdf_display = F'<iframe src="data:application/pdf;base64,{base64.b64encode(pdf_bytes).decode("utf-8")}" width="700" height="1000" type="application/pdf"></iframe>'
         st.markdown(pdf_display, unsafe_allow_html=True)
         
-        # Fallback buttons in case the display doesn't work
-        col1, col2 = st.columns(2)
-        with col1:
-            st.download_button(
-                label="📥 Download Resume",
-                data=pdf_bytes,
-                file_name=os.path.basename(file_path),
-                mime="application/pdf",
-                help="Click to download the resume"
-            )
+        # Add download button
+        st.download_button(
+            label="📥 Download Resume",
+            data=pdf_bytes,
+            file_name=os.path.basename(file_path),
+            mime="application/pdf"
+        )
         
-        with col2:
-            # Create a button that opens PDF in a new tab
-            st.markdown(f'''
-                <a href="data:application/pdf;base64,{base64_pdf}" target="_blank">
-                    <button style="
-                        background-color: #4CAF50;
-                        border: none;
-                        color: white;
-                        padding: 10px 24px;
-                        text-align: center;
-                        text-decoration: none;
-                        display: inline-block;
-                        font-size: 16px;
-                        margin: 4px 2px;
-                        cursor: pointer;
-                        border-radius: 4px;">
-                        🔎 Open in New Tab
-                    </button>
-                </a>
-            ''', unsafe_allow_html=True)
+        # Add a button to open in new tab
+        pdf_b64 = base64.b64encode(pdf_bytes).decode('utf-8')
+        href = f'<a href="data:application/pdf;base64,{pdf_b64}" target="_blank">🔎 View PDF in new tab</a>'
+        st.markdown(href, unsafe_allow_html=True)
         
     except Exception as e:
-        st.error("Error displaying the PDF. Please try the download option.")
-        st.error(f"Error details: {str(e)}")
-        # Provide download as fallback
+        st.error("Error displaying the PDF. Please try downloading it.")
         try:
             with open(file_path, "rb") as f:
                 st.download_button(
