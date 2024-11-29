@@ -59,35 +59,40 @@ def pdf_reader(file):
 
 def show_pdf(file_path):
     try:
-        # First try displaying with base64 encoding
         with open(file_path, "rb") as f:
-            base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+            pdf_bytes = f.read()
         
-        # Use HTML object tag as primary viewer
-        pdf_display = f'''
-            <object data="data:application/pdf;base64,{base64_pdf}" type="application/pdf" width="100%" height="800">
-                <iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="800" type="application/pdf">
-                    <p>This browser does not support PDF viewing. Please <a href="data:application/pdf;base64,{base64_pdf}" download="resume.pdf">download the PDF</a> to view it.</p>
-                </iframe>
-            </object>
-        '''
+        # Display PDF using st.components.v1.iframe
+        st.write("### Resume Preview")
+        base64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+        pdf_display = f'<embed src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf">'
         st.markdown(pdf_display, unsafe_allow_html=True)
         
-        # Add a download button as backup
-        with open(file_path, "rb") as f:
-            st.download_button(
-                label="📥 Download PDF",
-                data=f,
-                file_name=os.path.basename(file_path),
-                mime="application/pdf"
-            )
+        # Always show download button
+        st.download_button(
+            label="📥 Download Resume",
+            data=pdf_bytes,
+            file_name=os.path.basename(file_path),
+            mime="application/pdf",
+            help="Click here to download the resume"
+        )
+        
+        # Display a direct link as another option
+        st.markdown(f'''
+            <p style="text-align: center;">
+                <a href="data:application/pdf;base64,{base64_pdf}" download="{os.path.basename(file_path)}">
+                    🔗 Open PDF in new tab
+                </a>
+            </p>
+            ''', 
+            unsafe_allow_html=True
+        )
     except Exception as e:
-        st.error(f"Error displaying PDF: {str(e)}")
+        st.error("Error displaying the PDF. Please use the download button below.")
         try:
-            # Fallback to basic download
             with open(file_path, "rb") as f:
                 st.download_button(
-                    label="⚠️ Error viewing PDF. Click here to download instead",
+                    label="⚠️ Download PDF",
                     data=f,
                     file_name=os.path.basename(file_path),
                     mime="application/pdf"
