@@ -59,31 +59,84 @@ def pdf_reader(file):
 
 def show_pdf(file_path):
     try:
-        # Read PDF file
-        with open(file_path, "rb") as f:
-            pdf_bytes = f.read()
-        
         st.write("### Resume Preview")
         
-        # Display PDF using HTML
-        pdf_display = F'<iframe src="data:application/pdf;base64,{base64.b64encode(pdf_bytes).decode("utf-8")}" width="700" height="1000" type="application/pdf"></iframe>'
-        st.markdown(pdf_display, unsafe_allow_html=True)
+        # Extract text from PDF
+        def extract_text_from_pdf(pdf_path):
+            resource_manager = PDFResourceManager()
+            fake_file_handle = io.StringIO()
+            converter = TextConverter(resource_manager, fake_file_handle, laparams=LAParams())
+            page_interpreter = PDFPageInterpreter(resource_manager, converter)
+            
+            with open(pdf_path, 'rb') as fh:
+                for page in PDFPage.get_pages(fh, caching=True, check_extractable=True):
+                    page_interpreter.process_page(page)
+                
+            text = fake_file_handle.getvalue()
+            converter.close()
+            fake_file_handle.close()
+            
+            return text
         
-        # Add download button
-        st.download_button(
-            label="📥 Download Resume",
-            data=pdf_bytes,
-            file_name=os.path.basename(file_path),
-            mime="application/pdf"
-        )
+        # Get PDF text content
+        pdf_text = extract_text_from_pdf(file_path)
         
-        # Add a button to open in new tab
-        pdf_b64 = base64.b64encode(pdf_bytes).decode('utf-8')
-        href = f'<a href="data:application/pdf;base64,{pdf_b64}" target="_blank">🔎 View PDF in new tab</a>'
-        st.markdown(href, unsafe_allow_html=True)
+        # Create two columns
+        col1, col2 = st.columns([2,1])
         
+        with col1:
+            # Display PDF content in a nice format
+            st.markdown("#### PDF Content:")
+            st.markdown(
+                f"""
+                <div style="
+                    border: 1px solid #ccc;
+                    border-radius: 5px;
+                    padding: 20px;
+                    height: 500px;
+                    overflow-y: auto;
+                    background-color: white;
+                    font-family: monospace;
+                    white-space: pre-wrap;
+                ">
+                    {pdf_text}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        
+        with col2:
+            st.markdown("#### Options:")
+            # Add download button
+            with open(file_path, "rb") as f:
+                pdf_bytes = f.read()
+                st.download_button(
+                    label="📥 Download PDF",
+                    data=pdf_bytes,
+                    file_name=os.path.basename(file_path),
+                    mime="application/pdf",
+                    help="Download the original PDF file"
+                )
+            
+            # Show file info
+            file_size = os.path.getsize(file_path) / 1024  # Convert to KB
+            st.info(f"""
+                **File Information:**
+                - Name: {os.path.basename(file_path)}
+                - Size: {file_size:.1f} KB
+                - Type: PDF Document
+            """)
+            
+            # Add some helpful tips
+            st.markdown("""
+                **Tips:**
+                - Use the scroll bar to view all content
+                - Download the PDF to view original formatting
+                - Content shown here is extracted text only
+            """)
+            
     except Exception as e:
-        st.error("Error displaying the PDF. Please try downloading it.")
+        st.error("Error processing the PDF. Please try downloading it instead.")
         try:
             with open(file_path, "rb") as f:
                 st.download_button(
