@@ -131,35 +131,129 @@ class CustomResumeParser:
         return list(set(found_skills))
         
     def extract_education(self):
-        education_pattern = [
-            'bachelor', 'master', 'phd', 'b.tech', 'm.tech', 'degree'
-        ]
-        
+        """
+        Extract education details using multiple approaches
+        """
         education = []
-        for line in self.text_lines:
-            line_lower = line.lower()
-            for pattern in education_pattern:
-                if pattern in line_lower:
-                    education.append(line.strip())
-                    break
-                    
-        return list(set(education))
         
-    def extract_experience(self):
-        exp_pattern = [
-            'experience', 'work history', 'employment', 'work experience'
+        # Common education keywords
+        education_keywords = [
+            'education', 'qualification', 'academic', 'degree',
+            'bachelor', 'master', 'phd', 'b.tech', 'm.tech', 'b.e', 'm.e',
+            'b.sc', 'm.sc', 'b.a', 'm.a', 'diploma', 'university', 'college',
+            'institute', 'school'
         ]
         
-        experience = []
+        # Common degree patterns
+        degree_patterns = [
+            r'(?i)b\.?tech|bachelor of technology',
+            r'(?i)m\.?tech|master of technology',
+            r'(?i)b\.?e|bachelor of engineering',
+            r'(?i)m\.?e|master of engineering',
+            r'(?i)b\.?sc|bachelor of science',
+            r'(?i)m\.?sc|master of science',
+            r'(?i)b\.?a|bachelor of arts',
+            r'(?i)m\.?a|master of arts',
+            r'(?i)phd|ph\.?d|doctor of philosophy',
+            r'(?i)diploma in \w+'
+        ]
+        
+        # Find education section
+        education_section = []
+        in_education_section = False
+        
         for line in self.text_lines:
             line_lower = line.lower()
-            for pattern in exp_pattern:
-                if pattern in line_lower:
-                    experience.append(line.strip())
-                    break
-                    
-        return list(set(experience))
+            
+            # Check if we're entering education section
+            if any(keyword in line_lower for keyword in education_keywords):
+                in_education_section = True
+                continue
+            
+            # Check if we're leaving education section
+            if in_education_section and line.strip() and not any(keyword in line_lower for keyword in education_keywords):
+                if any(re.search(pattern, line) for pattern in degree_patterns):
+                    education_section.append(line.strip())
+                elif any(word.isupper() for word in line.split()):  # Likely an institution name
+                    education_section.append(line.strip())
+            
+            # Exit education section if we hit another section
+            if in_education_section and any(keyword in line_lower for keyword in ['experience', 'skills', 'projects']):
+                in_education_section = False
         
+        # Extract degrees and institutions using patterns
+        for line in self.text_lines:
+            # Look for degree patterns
+            for pattern in degree_patterns:
+                match = re.search(pattern, line, re.IGNORECASE)
+                if match and line.strip() not in education:
+                    education.append(line.strip())
+        
+        # Add education section contents
+        education.extend([item for item in education_section if item not in education])
+        
+        return list(set(education))
+
+    def extract_experience(self):
+        """
+        Extract work experience details
+        """
+        experience = []
+        
+        # Experience section keywords
+        exp_keywords = [
+            'experience', 'employment', 'work history', 'professional background',
+            'career history', 'work experience', 'professional experience'
+        ]
+        
+        # Date patterns
+        date_pattern = r'(?i)(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)\s*\d{4}\s*-\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december|present)\s*\d{0,4}'
+        
+        # Find experience section
+        in_experience_section = False
+        current_experience = []
+        
+        for line in self.text_lines:
+            line_lower = line.lower()
+            
+            # Check if we're entering experience section
+            if any(keyword in line_lower for keyword in exp_keywords):
+                in_experience_section = True
+                if line.strip() and not any(keyword == line_lower for keyword in exp_keywords):
+                    current_experience.append(line.strip())
+                continue
+            
+            # Collect experience details
+            if in_experience_section:
+                if line.strip():
+                    # Check for date patterns
+                    if re.search(date_pattern, line):
+                        if current_experience:
+                            experience.append(' | '.join(current_experience))
+                            current_experience = []
+                        current_experience.append(line.strip())
+                    # Check for company names (usually in caps)
+                    elif any(word.isupper() for word in line.split()):
+                        current_experience.append(line.strip())
+                    # Check for position titles (usually starts with capital)
+                    elif line[0].isupper():
+                        current_experience.append(line.strip())
+                    # Add bullet points
+                    elif line.strip().startswith(('•', '-', '*')):
+                        current_experience.append(line.strip())
+            
+            # Exit experience section if we hit another section
+            if in_experience_section and any(keyword in line_lower for keyword in ['education', 'skills', 'projects', 'achievements']):
+                in_experience_section = False
+                if current_experience:
+                    experience.append(' | '.join(current_experience))
+        
+        # Add any remaining experience
+        if current_experience:
+            experience.append(' | '.join(current_experience))
+        
+        return experience
+
     def get_extracted_data(self):
         return {
             'name': self.extract_name(),

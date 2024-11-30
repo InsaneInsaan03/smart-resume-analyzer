@@ -255,20 +255,78 @@ def run():
                     st.markdown('<h2 class="sub-header">📊 Resume Analysis</h2>', unsafe_allow_html=True)
                     st.success(f"Hello {resume_data['name']}")
                     
-                    # Display basic info in a modern card layout
+                    # Create three columns for basic info
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.info("📧 Email")
+                        st.write(resume_data['email'])
+                        st.info("📱 Contact")
+                        st.write(resume_data['mobile_number'])
+                        
+                    with col2:
+                        st.info("📄 Resume Pages")
+                        st.write(resume_data['no_of_pages'])
+                        if resume_data['no_of_pages'] == 1:
+                            st.markdown('''<h5 style='color: #d73b5c;'>📌 Fresher</h5>''', unsafe_allow_html=True)
+                        elif resume_data['no_of_pages'] == 2:
+                            st.markdown('''<h5 style='color: #1ed760;'>📌 Intermediate</h5>''', unsafe_allow_html=True)
+                        else:
+                            st.markdown('''<h5 style='color: #fba171;'>📌 Experienced</h5>''', unsafe_allow_html=True)
+                            
+                    with col3:
+                        st.info("🎯 Skills Found")
+                        st.write(f"{len(resume_data['skills'])} skills")
+                        st.info("💼 Experience")
+                        st.write(f"{len(resume_data['experience'])} entries")
+                    
+                    # Education Section
                     st.markdown("""
-                        <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            <h3 style="color: #2e86c1; margin-bottom: 15px;">Basic Information</h3>
+                        <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-top: 20px;">
+                            <h3 style="color: #2e86c1; margin-bottom: 15px;">🎓 Education</h3>
                         </div>
                     """, unsafe_allow_html=True)
                     
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.info(f"📧 Email: {resume_data['email']}")
-                        st.info(f"📱 Contact: {resume_data['mobile_number']}")
-                    with col2:
-                        st.info(f"📄 Pages: {resume_data['no_of_pages']}")
-                        
+                    if resume_data['education']:
+                        for edu in resume_data['education']:
+                            st.write(f"• {edu}")
+                    else:
+                        st.warning("No education details found")
+                    
+                    # Experience Section
+                    st.markdown("""
+                        <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-top: 20px;">
+                            <h3 style="color: #2e86c1; margin-bottom: 15px;">💼 Professional Experience</h3>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if resume_data['experience']:
+                        for exp in resume_data['experience']:
+                            exp_parts = exp.split(' | ')
+                            with st.expander(exp_parts[0]):  # Use first part as title
+                                for part in exp_parts[1:]:
+                                    st.write(part)
+                    else:
+                        st.warning("No professional experience found")
+                    
+                    # Skills Section
+                    st.markdown("""
+                        <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-top: 20px;">
+                            <h3 style="color: #2e86c1; margin-bottom: 15px;">🛠️ Skills</h3>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Display skills as tags
+                    if resume_data['skills']:
+                        skills_list = st_tags(
+                            label='### Current Skills',
+                            text='Detected skills',
+                            value=resume_data['skills'],
+                            key='current_skills'
+                        )
+                    else:
+                        st.warning("No skills found")
+                    
                     cand_level = ''
                     if resume_data['no_of_pages'] == 1:
                         cand_level = "Fresher"
