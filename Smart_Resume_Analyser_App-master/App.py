@@ -170,6 +170,15 @@ def run():
             color: #34495e;
             margin-bottom: 1rem;
         }
+        footer {
+            visibility: hidden;
+        }
+        #MainMenu {
+            visibility: hidden;
+        }
+        header {
+            visibility: hidden;
+        }
         </style>
     """, unsafe_allow_html=True)
     
