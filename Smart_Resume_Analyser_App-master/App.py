@@ -559,33 +559,23 @@ def main():
                     # Display selected number of courses
                     for i, (course_name, course_link) in enumerate(rec_course[:no_of_reco]):
                         st.markdown(f'''
-                            <div style="
-                                padding: 1rem;
-                                margin: 0.8rem 0;
-                                background: linear-gradient(135deg, #f6f9fc 0%, #f1f4f9 100%);
-                                border-radius: 8px;
-                                color: #2b5876;
-                                text-decoration: none;
-                                transition: all 0.3s ease;
-                                border-left: 4px solid transparent;
-                            ">
-                                <span style="
-                                    color: #2b5876;
-                                    margin-right: 1rem;
-                                    font-size: 1.1rem;
-                                ">🔗</span>
-                                <a href="{course_link}" 
-                                   target="_blank" 
-                                   style="
+                            <a href="{course_link}" 
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               style="
+                                    display: block;
+                                    padding: 1rem;
+                                    margin: 0.8rem 0;
+                                    background: linear-gradient(135deg, #f6f9fc 0%, #f1f4f9 100%);
+                                    border-radius: 8px;
                                     color: #2b5876;
                                     text-decoration: none;
-                                    font-weight: 500;
-                                    flex-grow: 1;
-                                    &:hover {{
-                                        text-decoration: underline;
-                                    }}
-                                ">{course_name}</a>
-                            </div>
+                                    border-left: 4px solid #2b5876;
+                                ">
+                                <span style="margin-right: 10px;">🔗</span>
+                                {course_name}
+                                <span style="float: right;">↗️</span>
+                            </a>
                         ''', unsafe_allow_html=True)
                 else:
                     st.info("Add skills to get personalized course recommendations")
