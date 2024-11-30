@@ -42,10 +42,66 @@ class CustomResumeParser:
             return text
             
     def extract_name(self):
-        # Simple name extraction using regex pattern
-        name_pattern = r'[A-Z][a-z]+ (?:[A-Z][a-z]+ )*[A-Z][a-z]+'
-        matches = re.findall(name_pattern, self.text)
-        return matches[0] if matches else ''
+        """
+        Extract name from resume text using multiple methods:
+        1. Look for common name patterns at the start of the resume
+        2. Use NLTK's Named Entity Recognition
+        3. Look for name after common resume headers
+        """
+        try:
+            # First few lines are most likely to contain the name
+            first_lines = '\n'.join(self.text_lines[:5])
+            
+            # Method 1: Common name pattern at the start
+            # This pattern looks for 2-3 word combinations with proper capitalization
+            name_pattern = r'^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2}$'
+            for line in self.text_lines[:5]:
+                line = line.strip()
+                if re.match(name_pattern, line):
+                    return line
+            
+            # Method 2: NLTK's Named Entity Recognition
+            try:
+                tokens = nltk.word_tokenize(first_lines)
+                pos_tags = nltk.pos_tag(tokens)
+                chunks = nltk.ne_chunk(pos_tags)
+                
+                # Extract person names from chunks
+                names = []
+                for chunk in chunks:
+                    if hasattr(chunk, 'label') and chunk.label() == 'PERSON':
+                        name = ' '.join(c[0] for c in chunk.leaves())
+                        names.append(name)
+                
+                if names:
+                    # Return the longest name found (likely to be full name)
+                    return max(names, key=len)
+            except Exception:
+                pass  # Continue with other methods if NLTK fails
+            
+            # Method 3: Look for name after common resume headers
+            name_headers = ['name:', 'full name:', 'candidate name:']
+            for line in self.text_lines[:10]:  # Check first 10 lines
+                line_lower = line.lower()
+                for header in name_headers:
+                    if line_lower.startswith(header):
+                        name = line[len(header):].strip()
+                        if name:  # Verify it's not empty
+                            return name
+            
+            # If no name found, look for first capitalized words
+            for line in self.text_lines[:5]:
+                words = line.split()
+                if len(words) >= 2:  # At least first and last name
+                    potential_name = ' '.join(w for w in words if w[0].isupper())
+                    if potential_name and len(potential_name.split()) >= 2:
+                        return potential_name
+            
+            return ''  # Return empty string if no name found
+            
+        except Exception as e:
+            print(f"Error in name extraction: {str(e)}")
+            return ''
         
     def extract_email(self):
         email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
