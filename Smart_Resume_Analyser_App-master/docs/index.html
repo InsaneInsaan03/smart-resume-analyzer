@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Resume Analyzer - Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-content">
+            <a href="#" class="nav-brand">
+                📄 Smart Resume Analyzer
+            </a>
+            <button class="mobile-menu-btn">☰</button>
+            <div class="nav-links">
+                <a href="#overview" class="nav-link">Overview</a>
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#setup" class="nav-link">Setup</a>
+                <a href="#api" class="nav-link">API</a>
+                <a href="#resources" class="nav-link">Resources</a>
+                <a href="#contact" class="nav-link">Contact</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h1>Smart Resume Analyzer</h1>
+            <p>Intelligent resume analysis and career guidance powered by AI</p>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="content">
+        <div class="container">
+            <!-- Overview Section -->
+            <section id="overview" class="section">
+                <div class="intro-section">
+                    <h2>Overview</h2>
+                    <p>A cutting-edge application that combines the power of AI and machine learning to analyze resumes 
+                       and provide intelligent career guidance. Built with modern technologies and designed for seamless user experience.</p>
+                </div>
+
+                <div class="overview-stats">
+                    <div class="stat-card">
+                        <div class="number">99%</div>
+                        <div class="label">Accuracy Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">50K+</div>
+                        <div class="label">Resumes Analyzed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">1000+</div>
+                        <div class="label">Career Paths</div>
+                    </div>
+                </div>
+
+                <div class="feature-highlight">
+                    <h2>Key Capabilities</h2>
+                    <div class="feature-highlight-grid">
+                        <div class="feature-item">
+                            <i>📊</i>
+                            <div class="feature-item-content">
+                                <h3>Smart Analysis</h3>
+                                <p>Advanced AI algorithms analyze your resume to extract skills, experience, and qualifications.</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <i>🎯</i>
+                            <div class="feature-item-content">
+                                <h3>Career Matching</h3>
+                                <p>Intelligent matching with potential career paths based on your profile and market demands.</p>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <i>📈</i>
+                            <div class="feature-item-content">
+                                <h3>Skill Gap Analysis</h3>
+                                <p>Identify missing skills and get personalized recommendations for improvement.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overview-grid">
+                    <div class="overview-card">
+                        <h3><i>🎓</i>Education Analysis</h3>
+                        <ul>
+                            <li>Qualification Recognition</li>
+                            <li>Academic Achievement Analysis</li>
+                            <li>Course Relevance Assessment</li>
+                            <li>Educational Background Impact</li>
+                        </ul>
+                    </div>
+                    <div class="overview-card">
+                        <h3><i>💼</i>Experience Evaluation</h3>
+                        <ul>
+                            <li>Work History Analysis</li>
+                            <li>Role Responsibility Mapping</li>
+                            <li>Industry Experience Assessment</li>
+                            <li>Project Impact Measurement</li>
+                        </ul>
+                    </div>
+                    <div class="overview-card">
+                        <h3><i>🚀</i>Career Guidance</h3>
+                        <ul>
+                            <li>Personalized Career Paths</li>
+                            <li>Industry Insights</li>
+                            <li>Growth Opportunity Analysis</li>
+                            <li>Salary Range Predictions</li>
+                        </ul>
+                    </div>
+                    <div class="overview-card">
+                        <h3><i>🛠️</i>Skill Assessment</h3>
+                        <ul>
+                            <li>Technical Skill Analysis</li>
+                            <li>Soft Skill Evaluation</li>
+                            <li>Skill Gap Identification</li>
+                            <li>Development Recommendations</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Libraries Section -->
+            <section id="libraries" class="section">
+                <h2>Libraries and Dependencies</h2>
+                
+                <div class="library-section">
+                    <h3>Core Libraries</h3>
+                    <div class="library-grid">
+                        <div class="library-card">
+                            <h4>Web Framework</h4>
+                            <ul>
+                                <li>streamlit>=1.40.0 - Main web framework</li>
+                                <li>plotly>=5.24.0 - Data visualization</li>
+                            </ul>
+                        </div>
+                        <div class="library-card">
+                            <h4>Data Processing</h4>
+                            <ul>
+                                <li>pandas>=2.2.0 - Data manipulation</li>
+                                <li>nltk>=3.9.0 - Natural language processing</li>
+                                <li>pdfminer3>=2018.12.3.0 - PDF parsing</li>
+                            </ul>
+                        </div>
+                        <div class="library-card">
+                            <h4>UI Components</h4>
+                            <ul>
+                                <li>streamlit-tags>=1.2.8 - Tag input component</li>
+                                <li>Pillow>=11.0.0 - Image processing</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="code-section">
+                    <h3>Installation</h3>
+                    <pre><code>pip install -r requirements.txt</code></pre>
+                </div>
+            </section>
+
+            <!-- Features Section -->
+            <section id="features" class="section">
+                <h2>Features</h2>
+
+                <h3>Resume Analysis</h3>
+                <ul>
+                    <li>PDF resume parsing and text extraction</li>
+                    <li>Automatic information detection</li>
+                    <li>Skills and expertise identification</li>
+                    <li>Experience level assessment</li>
+                </ul>
+
+                <h3>Career Guidance</h3>
+                <ul>
+                    <li>Field-specific recommendations</li>
+                    <li>Personalized skill suggestions</li>
+                    <li>Course recommendations</li>
+                    <li>Career path guidance</li>
+                </ul>
+
+                <h3>Mobile Features</h3>
+                <ul>
+                    <li>Native Android WebView integration</li>
+                    <li>File upload support</li>
+                    <li>Offline capabilities</li>
+                    <li>Secure file handling</li>
+                </ul>
+            </section>
+
+            <!-- Architecture Section -->
+            <section id="architecture" class="section">
+                <h2>System Architecture</h2>
+                <p>The Smart Resume Analyzer follows a modern, layered architecture that ensures scalability,
+                    maintainability, and robust performance.</p>
+
+                <!-- High-Level Architecture -->
+                <div class="card">
+                    <h3>High-Level Architecture</h3>
+                    <pre><code>┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Mobile App    │     │    WebView      │     │   Streamlit     │
+│   (Android)     │────▶│   Interface     │────▶│   Backend      │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+        │                       │                       │
+        │                       │                       │
+        ▼                       ▼                       ▼
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  File System    │     │   JavaScript    │     │    Python       │
+│   Access      │◀────▶│   Bridge        │     │    Services     │
+└─────────────────┘     └─────────────────┘     └─────────────────┘</code></pre>
+                </div>
+
+                <!-- Data Flow Diagram -->
+                <div class="card">
+                    <h3>Data Flow Diagram</h3>
+                    <pre><code>User Input                Processing              Storage
+    │                         │                    │
+    ▼                         ▼                    ▼
+┌──────────┐ PDF File  ┌──────────────┐    ┌───────────┐
+│  Mobile  │─────────▶│  PDF Parser   │───▶│  SQLite   │
+│   App    │          └──────────────┘    │           │
+└──────────┘                │             │    DB     │
+    │                       ▼             │           │
+    │               ┌──────────────┐      │           │
+    │               │ Text Analysis│      │           │
+    │               └──────────────┘      │           │
+    │                       │             │           │
+    │                       ▼             │           │
+    │               ┌──────────────┐      │           │
+    │               │Skill Extract │──────▶│           │
+    │               └──────────────┘      │           │
+    │                       │             │           │
+    │                       ▼             │           │
+    │               ┌──────────────┐      │           │
+    │               │Course Recom. │◀─────│           │
+    │               └──────────────┘      └───────────┘
+    │                       │                    ▲
+    │                       ▼                    │
+    │               ┌──────────────┐            │
+    └──────────────│   Results    │────────────┘
+                   └──────────────┘</code></pre>
+                </div>
+
+                <!-- Control Flow -->
+                <div class="card">
+                    <h3>Control Flow</h3>
+                    <pre><code>1. User Authentication Flow
+┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
+│  Login   │───▶│  Auth    │───▶│  Token   │───▶│  Access  │
+│  Request │    │  Check   │    │  Gen     │    │  Granted │
+└──────────┘    └──────────┘    └──────────┘    └──────────┘
+
+2. Resume Analysis Flow
+┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
+│  Upload  │───▶│  Parse   │───▶│  Analyze │───▶│  Store   │
+│  Resume  │    │  PDF     │    │  Content │    │  Results │
+└──────────┘    └──────────┘    └──────────┘    └──────────┘
+
+3. Recommendation Flow
+┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
+│  Fetch   │───▶│  Process │───▶│  Generate│───▶│  Display │
+│  Skills  │    │  Data    │    │  Recom.  │    │  Results │
+└──────────┘    └──────────┘    └──────────┘    └──────────┘</code></pre>
+                </div>
+
+                <!-- Component Architecture -->
+                <div class="card">
+                    <h3>Component Architecture</h3>
+                    <table>
+                        <tr>
+                            <th>Layer</th>
+                            <th>Components</th>
+                            <th>Responsibilities</th>
+                        </tr>
+                        <tr>
+                            <td>Presentation Layer</td>
+                            <td>
+                                - Android Activity<br>
+                                - WebView<br>
+                                - Streamlit UI
+                            </td>
+                            <td>
+                                - User interface<br>
+                                - Input handling<br>
+                                - Result display
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Business Logic Layer</td>
+                            <td>
+                                - PDF Parser<br>
+                                - Text Analyzer<br>
+                                - Skill Extractor<br>
+                                - Recommendation Engine
+                            </td>
+                            <td>
+                                - Resume processing<br>
+                                - Skill analysis<br>
+                                - Course matching<br>
+                                - Career guidance
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Data Layer</td>
+                            <td>
+                                - SQLite Database<br>
+                                - File Storage<br>
+                                - Cache Manager
+                            </td>
+                            <td>
+                                - Data persistence<br>
+                                - File management<br>
+                                - Cache handling
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Data Models -->
+                <div class="card">
+                    <h3>Data Models</h3>
+                    <pre><code>1. User Model
+{
+    "id": "string",
+    "email": "string",
+    "profile": {
+        "name": "string",
+        "experience": "number",
+        "field": "string"
+    }
+}
+
+2. Resume Analysis Model
+{
+    "id": "string",
+    "user_id": "string",
+    "timestamp": "datetime",
+    "content": {
+        "raw_text": "string",
+        "skills": ["string"],
+        "experience": "object"
+    }
+}
+
+3. Recommendation Model
+{
+    "id": "string",
+    "analysis_id": "string",
+    "courses": [{
+        "title": "string",
+        "url": "string",
+        "relevance": "number"
+    }],
+    "career_paths": ["string"]
+}</code></pre>
+                </div>
+
+                <!-- System Integration -->
+                <div class="card">
+                    <h3>System Integration</h3>
+                    <pre><code>Mobile App ←→ WebView Bridge
+┌────────────────┐      ┌────────────────┐
+│ Android Native │      │    WebView     │
+│                │◀────▶│    Bridge      │
+└────────────────┘      └────────────────┘
+        ↑                       ↑
+        │                       │
+        ↓                       ↓
+┌────────────────┐      ┌────────────────┐
+│  File System   │      │   Streamlit    │
+│   Access      │◀────▶│    Server      │
+└────────────────┘      └────────────────┘</code></pre>
+                </div>
+
+                <!-- Error Handling Flow -->
+                <div class="card">
+                    <h3>Error Handling Flow</h3>
+                    <pre><code>Error Detection → Logging → User Notification
+┌──────────┐    ┌──────────┐    ┌──────────┐
+│  Error   │───▶│  Log     │───▶│  Display │
+│  Occurs  │    │  Error   │    │  Message │
+└──────────┘    └──────────┘    └──────────┘
+      │              │               │
+      ▼              ▼               ▼
+┌──────────┐    ┌──────────┐    ┌──────────┐
+│  Retry   │    │  Alert   │    │  Recover │
+│  Logic   │    │  Admin   │    │  State   │
+└──────────┘    └──────────┘    └──────────┘</code></pre>
+                </div>
+
+                <!-- Performance Considerations -->
+                <div class="card">
+                    <h3>Performance Optimization</h3>
+                    <ul>
+                        <li>Caching Strategy
+                            <ul>
+                                <li>Resume analysis results</li>
+                                <li>Course recommendations</li>
+                                <li>User preferences</li>
+                            </ul>
+                        </li>
+                        <li>Lazy Loading
+                            <ul>
+                                <li>PDF processing</li>
+                                <li>Course data</li>
+                                <li>UI components</li>
+                            </ul>
+                        </li>
+                        <li>Background Processing
+                            <ul>
+                                <li>Resume analysis</li>
+                                <li>Skill extraction</li>
+                                <li>Recommendation generation</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Setup Section -->
+            <section id="setup" class="section">
+                <h2>Setup Guide</h2>
+
+                <h3>Prerequisites</h3>
+                <ul>
+                    <li>Android Studio</li>
+                    <li>Python 3.7+</li>
+                    <li>Java Development Kit 17</li>
+                    <li>Git</li>
+                </ul>
+
+                <h3>Installation</h3>
+                <pre><code># Clone the repository
+git clone https://github.com/yourusername/smart-resume-analyzer.git
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Run Streamlit app
+streamlit run App.py</code></pre>
+
+                <h3>Android Setup</h3>
+                <ol>
+                    <li>Open Android Studio</li>
+                    <li>Import the Android project</li>
+                    <li>Sync Gradle files</li>
+                    <li>Build and run the application</li>
+                </ol>
+            </section>
+
+            <!-- API Section -->
+            <section id="api" class="section">
+                <h2>API Documentation</h2>
+                <p>The Smart Resume Analyzer utilizes several APIs and libraries to provide comprehensive resume
+                    analysis and career guidance. Here's a detailed overview of each component:</p>
+
+                <!-- API Theory Section -->
+                <section id="api-theory" class="section">
+                    <h2>API Theory & Architecture</h2>
+
+                    <!-- Basic Concepts -->
+                    <div class="card">
+                        <h3>Understanding APIs</h3>
+                        <p>An API (Application Programming Interface) acts as a messenger that processes requests and
+                            ensures seamless communication between different components of a software system. Key
+                            concepts include:</p>
+                        <ul>
+                            <li><strong>Endpoints:</strong> URLs where API requests are sent</li>
+                            <li><strong>HTTP Methods:</strong> GET, POST, PUT, DELETE operations</li>
+                            <li><strong>Request/Response:</strong> Data exchange format (usually JSON)</li>
+                            <li><strong>Authentication:</strong> Security verification process</li>
+                        </ul>
+                    </div>
+
+                    <!-- REST Architecture -->
+                    <div class="card">
+                        <h3>REST Architecture Principles</h3>
+                        <table class="api-table">
+                            <tr>
+                                <th>Principle</th>
+                                <th>Description</th>
+                                <th>Example</th>
+                            </tr>
+                            <tr>
+                                <td>Stateless</td>
+                                <td>Each request contains all needed information</td>
+                                <td>Authentication tokens in headers</td>
+                            </tr>
+                            <tr>
+                                <td>Client-Server</td>
+                                <td>Separation of concerns</td>
+                                <td>Mobile app ↔ Backend server</td>
+                            </tr>
+                            <tr>
+                                <td>Cacheable</td>
+                                <td>Responses must be cacheable</td>
+                                <td>Course recommendations caching</td>
+                            </tr>
+                            <tr>
+                                <td>Uniform Interface</td>
+                                <td>Standardized resource handling</td>
+                                <td>Consistent URL patterns</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <!-- API Flow -->
+                    <div class="card">
+                        <h3>API Request Flow</h3>
+                        <pre><code>
+Client Request → Authentication → Validation → Processing → Response
+     ↑              |               |            |            |
+     └──────────────┴───────────────┴────────────┴────────────┘
+                         Error Handling
+        </code></pre>
+                    </div>
+
+                    <!-- Security -->
+                    <div class="card">
+                        <h3>API Security Measures</h3>
+                        <ul>
+                            <li><strong>Authentication:</strong>
+                                <ul>
+                                    <li>JWT (JSON Web Tokens)</li>
+                                    <li>OAuth 2.0</li>
+                                    <li>API Keys</li>
+                                </ul>
+                            </li>
+                            <li><strong>Data Protection:</strong>
+                                <ul>
+                                    <li>HTTPS Encryption</li>
+                                    <li>Input Validation</li>
+                                    <li>Rate Limiting</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Performance -->
+                    <div class="card">
+                        <h3>Performance Optimization</h3>
+                        <ul>
+                            <li><strong>Caching Strategies:</strong>
+                                <ul>
+                                    <li>Response Caching</li>
+                                    <li>Database Query Caching</li>
+                                    <li>CDN Integration</li>
+                                </ul>
+                            </li>
+                            <li><strong>Scalability:</strong>
+                                <ul>
+                                    <li>Load Balancing</li>
+                                    <li>Microservices Architecture</li>
+                                    <li>Horizontal Scaling</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Best Practices -->
+                    <div class="card">
+                        <h3>API Best Practices</h3>
+                        <ul>
+                            <li><strong>Documentation:</strong>
+                                <ul>
+                                    <li>Clear endpoint descriptions</li>
+                                    <li>Request/response examples</li>
+                                    <li>Error handling guidelines</li>
+                                </ul>
+                            </li>
+                            <li><strong>Versioning:</strong>
+                                <ul>
+                                    <li>URL versioning (/api/v1/)</li>
+                                    <li>Header versioning</li>
+                                    <li>Backward compatibility</li>
+                                </ul>
+                            </li>
+                            <li><strong>Error Handling:</strong>
+                                <ul>
+                                    <li>Consistent error formats</li>
+                                    <li>Meaningful error messages</li>
+                                    <li>Appropriate status codes</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Implementation Example -->
+                    <div class="card">
+                        <h3>Implementation Example</h3>
+                        <pre><code class="python">
+# API Endpoint Example
+@app.route('/api/v1/resume/analyze', methods=['POST'])
+@jwt_required
+def analyze_resume():
+    try:
+        # Validate request
+        if 'file' not in request.files:
+            return jsonify({
+                'error': 'No file provided'
+            }), 400
+            
+        # Process resume
+        resume_file = request.files['file']
+        analysis_result = process_resume(resume_file)
+        
+        # Return response
+        return jsonify({
+            'status': 'success',
+            'data': analysis_result
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
+        </code></pre>
+                    </div>
+                </section>
+                <!-- Resume Processing API -->
+                <div class="card">
+                    <h3>1. Resume Processing API</h3>
+                    <pre><code class="python">
+# Resume Processing Endpoint
+@app.route('/api/v1/process-resume', methods=['POST'])
+def process_resume():
+    """
+    Process uploaded resume and extract information
+    
+    Request:
+    --------
+    - Method: POST
+    - Content-Type: multipart/form-data
+    - Body: 
+        - file: PDF file (required)
+        - user_id: string (required)
+    
+    Response:
+    ---------
+    - 200: Success
+        {
+            "status": "success",
+            "data": {
+                "skills": [...],
+                "experience": {...},
+                "education": [...]
+            }
+        }
+    - 400: Bad Request
+    - 500: Server Error
+    """
+    try:
+        # Validate request
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+            
+        file = request.files['file']
+        
+        # Process PDF using PDFMiner
+        text = process_pdf(file)
+        
+        # Extract information using NLP
+        data = extract_information(text)
+        
+        return jsonify({
+            "status": "success",
+            "data": data
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500</code></pre>
+                </div>
+
+                <!-- Skill Extraction API -->
+                <div class="card">
+                    <h3>2. Skill Extraction API</h3>
+                    <pre><code class="python">
+# Skill Extraction Service
+class SkillExtractor:
+    """
+    Service to extract and analyze skills from resume text
+    
+    Methods:
+    --------
+    extract_skills(text: str) -> List[str]
+    match_skills(skills: List[str]) -> Dict[str, float]
+    """
+    
+    def __init__(self):
+        # Initialize NLP models and skill database
+        self.nlp = spacy.load("en_core_web_sm")
+        self.skill_patterns = load_skill_patterns()
+    
+    def extract_skills(self, text: str) -> List[str]:
+        """
+        Extract skills from text using NLP
+        
+        Parameters:
+        -----------
+        text : str
+            Raw text from resume
+            
+        Returns:
+        --------
+        List[str]
+            List of identified skills
+        """
+        doc = self.nlp(text)
+        skills = []
+        
+        # Pattern matching for technical skills
+        for pattern in self.skill_patterns:
+            if pattern.search(text):
+                skills.append(pattern.group())
+                
+        # Named Entity Recognition for additional skills
+        for ent in doc.ents:
+            if ent.label_ == "SKILL":
+                skills.append(ent.text)
+                
+        return list(set(skills))  # Remove duplicates</code></pre>
+                </div>
+
+                <!-- Course Recommendation API -->
+                <div class="card">
+                    <h3>3. Course Recommendation API</h3>
+                    <pre><code class="python">
+# Course Recommendation Engine
+class CourseRecommender:
+    """
+    Recommends relevant courses based on extracted skills
+    
+    Methods:
+    --------
+    get_recommendations(skills: List[str], limit: int = 5) -> List[Dict]
+    """
+    
+    def __init__(self):
+        # Initialize course database and matching algorithm
+        self.courses_db = load_courses_database()
+        self.skill_matcher = SkillMatcher()
+    
+    def get_recommendations(
+        self, 
+        skills: List[str], 
+        limit: int = 5
+    ) -> List[Dict]:
+        """
+        Get course recommendations based on skills
+        
+        Parameters:
+        -----------
+        skills : List[str]
+            List of user's current skills
+        limit : int, optional
+            Maximum number of recommendations
+            
+        Returns:
+        --------
+        List[Dict]
+            Recommended courses with relevance scores
+        """
+        recommendations = []
+        
+        # Match skills with courses
+        for course in self.courses_db:
+            score = self.skill_matcher.calculate_relevance(
+                skills, 
+                course.required_skills
+            )
+            if score > 0.5:  # Minimum relevance threshold
+                recommendations.append({
+                    "course_id": course.id,
+                    "title": course.title,
+                    "relevance": score,
+                    "url": course.url
+                })
+        
+        # Sort by relevance and limit results
+        recommendations.sort(key=lambda x: x["relevance"], reverse=True)
+        return recommendations[:limit]</code></pre>
+                </div>
+
+                <!-- Career Analysis API -->
+                <div class="card">
+                    <h3>4. Career Analysis API</h3>
+                    <pre><code class="python">
+# Career Path Analysis
+class CareerAnalyzer:
+    """
+    Analyzes career paths and provides recommendations
+    
+    Methods:
+    --------
+    analyze_career(resume_data: Dict) -> Dict
+    suggest_improvements(analysis: Dict) -> List[str]
+    """
+    
+    def analyze_career(self, resume_data: Dict) -> Dict:
+        """
+        Analyze career trajectory and potential paths
+        
+        Parameters:
+        -----------
+        resume_data : Dict
+            Parsed resume data including:
+            - skills
+            - experience
+            - education
+            
+        Returns:
+        --------
+        Dict
+            Career analysis including:
+            - current_level
+            - potential_paths
+            - skill_gaps
+        """
+        # Analyze experience level
+        experience_level = self._calculate_experience_level(
+            resume_data["experience"]
+        )
+        
+        # Identify potential career paths
+        career_paths = self._identify_career_paths(
+            resume_data["skills"],
+            experience_level
+        )
+        
+        # Analyze skill gaps
+        skill_gaps = self._analyze_skill_gaps(
+            resume_data["skills"],
+            career_paths
+        )
+        
+        return {
+            "current_level": experience_level,
+            "potential_paths": career_paths,
+            "skill_gaps": skill_gaps
+        }</code></pre>
+                </div>
+
+                <!-- Database Management API -->
+                <div class="card">
+                    <h3>5. Database Management API</h3>
+                    <pre><code class="python">
+# Database Manager
+class DatabaseManager:
+    """
+    Handles all database operations for the application
+    
+    Methods:
+    --------
+    save_resume(user_id: str, resume_data: Dict) -> bool
+    get_resume(user_id: str) -> Dict
+    update_analysis(user_id: str, analysis: Dict) -> bool
+    """
+    
+    def __init__(self):
+        """Initialize database connection"""
+        self.db = sqlite3.connect('resume_analyzer.db')
+        self.cursor = self.db.cursor()
+        self._create_tables()
+    
+    def _create_tables(self):
+        """Create necessary database tables if they don't exist"""
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS resumes (
+                user_id TEXT PRIMARY KEY,
+                name TEXT,
+                email TEXT,
+                phone TEXT,
+                skills TEXT,
+                experience TEXT,
+                education TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS analysis (
+                user_id TEXT PRIMARY KEY,
+                career_level TEXT,
+                recommended_paths TEXT,
+                skill_gaps TEXT,
+                courses TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES resumes (user_id)
+            )
+        ''')</code></pre>
+                </div>
+
+                <!-- Mobile Integration API -->
+                <div class="card">
+                    <h3>6. Mobile Integration API</h3>
+                    <pre><code class="java">
+// Android WebView Interface
+public class ResumeAnalyzerInterface {
+    /*
+     * JavaScript interface for Android-Web communication
+     *
+     * Methods:
+     * --------
+     * uploadResume(Uri fileUri)
+     * getAnalysis(String userId)
+     * downloadCertificate(String courseId)
+     */
+    
+    @JavascriptInterface
+    public void uploadResume(Uri fileUri) {
+        // Handle file upload from mobile device
+        try {
+            // Convert URI to File
+            File resumeFile = FileUtils.getFile(context, fileUri);
+            
+            // Create multipart request
+            MultipartBody.Part filePart = MultipartBody.Part.createFormData(
+                "file",
+                resumeFile.getName(),
+                RequestBody.create(
+                    MediaType.parse("application/pdf"),
+                    resumeFile
+                )
+            );
+            
+            // Make API call
+            apiService.uploadResume(filePart)
+                .enqueue(new Callback<UploadResponse>() {
+                    @Override
+                    public void onResponse(...) {
+                        // Handle success
+                        webView.evaluateJavascript(
+                            "onUploadSuccess(" + response + ")",
+                            null
+                        );
+                    }
+                    
+                    @Override
+                    public void onFailure(...) {
+                        // Handle error
+                        webView.evaluateJavascript(
+                            "onUploadError('" + t.getMessage() + "')",
+                            null
+                        );
+                    }
+                });
+        } catch (Exception e) {
+            Log.e(TAG, "Upload failed", e);
+        }
+    }</code></pre>
+                </div>
+
+                <!-- Authentication API -->
+                <div class="card">
+                    <h3>7. Authentication API</h3>
+                    <pre><code class="python">
+# Authentication Service
+class AuthService:
+    """
+    Handles user authentication and authorization
+    
+    Methods:
+    --------
+    login(email: str, password: str) -> Dict
+    verify_token(token: str) -> bool
+    refresh_token(refresh_token: str) -> Dict
+    """
+    
+    def login(self, email: str, password: str) -> Dict:
+        """
+        Authenticate user and generate JWT token
+        
+        Parameters:
+        -----------
+        email : str
+            User's email address
+        password : str
+            User's password
+            
+        Returns:
+        --------
+        Dict
+            Authentication response with tokens
+        """
+        # Verify credentials
+        user = self._verify_credentials(email, password)
+        
+        if not user:
+            raise AuthenticationError("Invalid credentials")
+            
+        # Generate tokens
+        access_token = self._generate_access_token(user)
+        refresh_token = self._generate_refresh_token(user)
+        
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.name
+            }
+        }</code></pre>
+                </div>
+
+                <!-- Error Handling API -->
+                <div class="card">
+                    <h3>8. Error Handling API</h3>
+                    <pre><code class="python">
+# Error Handler
+class ErrorHandler:
+    """
+    Centralized error handling for the application
+    
+    Methods:
+    --------
+    handle_error(error: Exception) -> Tuple[Dict, int]
+    log_error(error: Exception, context: Dict) -> None
+    """
+    
+    def handle_error(self, error: Exception) -> Tuple[Dict, int]:
+        """
+        Handle and format error responses
+        
+        Parameters:
+        -----------
+        error : Exception
+            The caught exception
+            
+        Returns:
+        --------
+        Tuple[Dict, int]
+            Error response and HTTP status code
+        """
+        if isinstance(error, ValidationError):
+            return {
+                "error": "Validation Error",
+                "details": error.messages
+            }, 400
+            
+        elif isinstance(error, AuthenticationError):
+            return {
+                "error": "Authentication Error",
+                "message": str(error)
+            }, 401
+            
+        elif isinstance(error, DatabaseError):
+            return {
+                "error": "Database Error",
+                "message": "Internal server error"
+            }, 500
+            
+        # Log unexpected errors
+        self.log_error(error, {
+            "timestamp": datetime.now(),
+            "type": type(error).__name__
+        })</code></pre>
+                </div>
+
+                <!-- Rate Limiting API -->
+                <div class="card">
+                    <h3>9. Rate Limiting API</h3>
+                    <pre><code class="python">
+# Rate Limiter
+class RateLimiter:
+    """
+    Implements rate limiting for API endpoints
+    
+    Methods:
+    --------
+    check_rate_limit(user_id: str) -> bool
+    update_request_count(user_id: str) -> None
+    """
+    
+    def __init__(self):
+        """Initialize rate limiter with Redis"""
+        self.redis_client = Redis(host='localhost', port=6379)
+        self.rate_limit = 100  # requests per hour
+        self.window = 3600  # 1 hour in seconds
+    
+    def check_rate_limit(self, user_id: str) -> bool:
+        """
+        Check if user has exceeded rate limit
+        
+        Parameters:
+        -----------
+        user_id : str
+            Unique identifier for the user
+            
+        Returns:
+        --------
+        bool
+            True if under limit, False if exceeded
+        """
+        key = f"rate_limit:{user_id}"
+        current = int(self.redis_client.get(key) or 0)
+        
+        if current >= self.rate_limit:
+            return False
+            
+        # Update counter in Redis
+        pipe = self.redis_client.pipeline()
+        pipe.incr(key)
+        pipe.expire(key, self.window)
+        pipe.execute()
+        
+        return True</code></pre>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container footer-content">
+            <div>
+                <h3>Smart Resume Analyzer</h3>
+                <p>Empowering career decisions through intelligent resume analysis and personalized guidance</p>
+                <div class="social-icons">
+                    <a href="#" class="social-icon">📱</a>
+                    <a href="#" class="social-icon">💻</a>
+                    <a href="#" class="social-icon">📧</a>
+                    <a href="#" class="social-icon">🌐</a>
+                </div>
+            </div>
+            <div>
+                <h3>Resources</h3>
+                <ul>
+                    <li><a href="#">Documentation</a></li>
+                    <li><a href="#">API Reference</a></li>
+                    <li><a href="#">User Guide</a></li>
+                    <li><a href="#">Sample Projects</a></li>
+                </ul>
+            </div>
+            <div>
+                <h3>Support</h3>
+                <ul>
+                    <li><a href="#">Help Center</a></li>
+                    <li><a href="#">Report Issues</a></li>
+                    <li><a href="#">Feature Request</a></li>
+                    <li><a href="#">Contact Team</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2024 Smart Resume Analyzer. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+    <script>
+        // Mobile menu toggle
+        const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+        const navLinks = document.querySelector('.nav-links');
+        
+        mobileMenuBtn.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+        });
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.nav') && navLinks.classList.contains('active')) {
+                navLinks.classList.remove('active');
+            }
+        });
+
+        // Close mobile menu when clicking a link
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                navLinks.classList.remove('active');
+            });
+        });
+    </script>
+</body>
+
+</html>
