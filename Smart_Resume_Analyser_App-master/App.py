@@ -170,6 +170,47 @@ def run():
             color: #34495e;
             margin-bottom: 1rem;
         }
+        
+        /* Success Animation Styles */
+        @keyframes successCheck {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.2);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        .success-animation {
+            text-align: center;
+            padding: 20px;
+            animation: successCheck 0.5s ease-in-out;
+        }
+        
+        .success-checkmark {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto;
+            background-color: #47d147;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 40px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .success-message {
+            margin-top: 15px;
+            color: #2e86c1;
+            font-weight: bold;
+        }
         </style>
     """, unsafe_allow_html=True)
     
@@ -203,6 +244,14 @@ def run():
                     ## Get the whole resume data
                     resume_text = pdf_reader(save_image_path)
 
+                    # Display success animation
+                    st.markdown("""
+                        <div class="success-animation">
+                            <div class="success-checkmark">✓</div>
+                            <div class="success-message">Resume Successfully Analyzed!</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
                     st.markdown('<h2 class="sub-header">📊 Resume Analysis</h2>', unsafe_allow_html=True)
                     st.success(f"Hello {resume_data['name']}")
                     
