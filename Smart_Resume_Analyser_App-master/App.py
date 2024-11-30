@@ -290,109 +290,101 @@ def run():
                                        value=resume_data['skills'], key='1')
 
                     ##  recommendation
-                    ds_keyword = ['tensorflow', 'keras', 'pytorch', 'machine learning', 'deep Learning', 'flask',
-                                  'streamlit']
-                    web_keyword = ['react', 'django', 'node jS', 'react js', 'php', 'laravel', 'magento', 'wordpress',
-                                   'javascript', 'angular js', 'c#', 'flask']
-                    android_keyword = ['android', 'android development', 'flutter', 'kotlin', 'xml', 'kivy']
-                    ios_keyword = ['ios', 'ios development', 'swift', 'cocoa', 'cocoa touch', 'xcode']
-                    uiux_keyword = ['ux', 'adobe xd', 'figma', 'zeplin', 'balsamiq', 'ui', 'prototyping', 'wireframes',
-                                    'storyframes', 'adobe photoshop', 'photoshop', 'editing', 'adobe illustrator',
-                                    'illustrator', 'adobe after effects', 'after effects', 'adobe premier pro',
-                                    'premier pro', 'adobe indesign', 'indesign', 'wireframe', 'solid', 'grasp',
-                                    'user research', 'user experience']
-
                     recommended_skills = []
                     reco_field = ''
                     rec_course = ''
-                    ## Courses recommendation
-                    for i in resume_data['skills']:
-                        ## Data science recommendation
-                        if i.lower() in ds_keyword:
-                            print(i.lower())
-                            reco_field = 'Data Science'
-                            st.success("** Our analysis says you are looking for Data Science Jobs.**")
+
+                    # Define skill keywords
+                    ds_keyword = set(['tensorflow', 'keras', 'pytorch', 'machine learning', 'deep learning', 'flask',
+                                  'streamlit', 'python', 'pandas', 'data analysis', 'scipy', 'numpy', 'data science',
+                                  'matplotlib', 'statistics', 'analytics', 'visualization', 'sql', 'database'])
+                    
+                    web_keyword = set(['react', 'django', 'node js', 'react js', 'php', 'laravel', 'magento', 'wordpress',
+                                   'javascript', 'angular js', 'c#', 'flask', 'html', 'css', 'bootstrap', 'jquery'])
+                    
+                    android_keyword = set(['android', 'android development', 'flutter', 'kotlin', 'xml', 'kivy',
+                                       'java', 'mobile development', 'firebase', 'sdk', 'android studio'])
+                    
+                    ios_keyword = set(['ios', 'ios development', 'swift', 'cocoa', 'cocoa touch', 'xcode',
+                                   'objective c', 'mobile development', 'apple', 'swift ui'])
+                    
+                    uiux_keyword = set(['ux', 'adobe xd', 'figma', 'zeplin', 'balsamiq', 'ui', 'prototyping', 'wireframes',
+                                    'storyframes', 'adobe photoshop', 'photoshop', 'editing', 'adobe illustrator',
+                                    'illustrator', 'adobe after effects', 'after effects', 'adobe premier pro',
+                                    'premier pro', 'adobe indesign', 'indesign', 'wireframe', 'solid', 'grasp',
+                                    'user research', 'user experience', 'sketch', 'principle', 'invision'])
+
+                    ## Courses recommendation based on skills
+                    skill_matches = {
+                        'Data Science': 0,
+                        'Web Development': 0,
+                        'Android Development': 0,
+                        'IOS Development': 0,
+                        'UI/UX Development': 0
+                    }
+
+                    user_skills = set([skill.lower() for skill in resume_data['skills']])
+                    
+                    # Count matches for each field
+                    skill_matches['Data Science'] = len(user_skills.intersection(ds_keyword))
+                    skill_matches['Web Development'] = len(user_skills.intersection(web_keyword))
+                    skill_matches['Android Development'] = len(user_skills.intersection(android_keyword))
+                    skill_matches['IOS Development'] = len(user_skills.intersection(ios_keyword))
+                    skill_matches['UI/UX Development'] = len(user_skills.intersection(uiux_keyword))
+
+                    # Find the field with maximum matches
+                    max_matches = max(skill_matches.values())
+                    if max_matches > 0:
+                        matched_fields = [field for field, matches in skill_matches.items() if matches == max_matches]
+                        reco_field = matched_fields[0]  # Take the first field if there are multiple matches
+
+                        # Set recommendations based on field
+                        if reco_field == 'Data Science':
+                            st.success("** Our analysis shows you are looking for Data Science Jobs **")
                             recommended_skills = ['Data Visualization', 'Predictive Analysis', 'Statistical Modeling',
-                                                  'Data Mining', 'Clustering & Classification', 'Data Analytics',
-                                                  'Quantitative Analysis', 'Web Scraping', 'ML Algorithms', 'Keras',
-                                                  'Pytorch', 'Probability', 'Scikit-learn', 'Tensorflow', "Flask",
-                                                  'Streamlit']
-                            recommended_keywords = st_tags(label='### Recommended skills for you.',
-                                                           text='Recommended skills generated from System',
-                                                           value=recommended_skills, key='2')
-                            st.markdown(
-                                '''<h4 style='text-align: left; color: #1ed760;'>Adding this skills to resume will boost🚀 the chances of getting a Job💼</h4>''',
-                                unsafe_allow_html=True)
-                            rec_course = course_recommender(ds_course)
-                            break
+                                              'Data Mining', 'Clustering & Classification', 'Data Analytics',
+                                              'Quantitative Analysis', 'Web Scraping', 'ML Algorithms', 'Keras',
+                                              'Pytorch', 'Probability', 'Scikit-learn', 'Tensorflow', "Flask",
+                                              'Streamlit']
+                            rec_course = ds_course
 
-                        ## Web development recommendation
-                        elif i.lower() in web_keyword:
-                            print(i.lower())
-                            reco_field = 'Web Development'
-                            st.success("** Our analysis says you are looking for Web Development Jobs **")
+                        elif reco_field == 'Web Development':
+                            st.success("** Our analysis shows you are looking for Web Development Jobs **")
                             recommended_skills = ['React', 'Django', 'Node JS', 'React JS', 'php', 'laravel', 'Magento',
-                                                  'wordpress', 'Javascript', 'Angular JS', 'c#', 'Flask', 'SDK']
-                            recommended_keywords = st_tags(label='### Recommended skills for you.',
-                                                           text='Recommended skills generated from System',
-                                                           value=recommended_skills, key='3')
-                            st.markdown(
-                                '''<h4 style='text-align: left; color: #1ed760;'>Adding this skills to resume will boost🚀 the chances of getting a Job💼</h4>''',
-                                unsafe_allow_html=True)
-                            rec_course = course_recommender(web_course)
-                            break
+                                              'wordpress', 'Javascript', 'Angular JS', 'c#', 'Flask', 'SDK']
+                            rec_course = web_course
 
-                        ## Android App Development
-                        elif i.lower() in android_keyword:
-                            print(i.lower())
-                            reco_field = 'Android Development'
-                            st.success("** Our analysis says you are looking for Android App Development Jobs **")
+                        elif reco_field == 'Android Development':
+                            st.success("** Our analysis shows you are looking for Android Development Jobs **")
                             recommended_skills = ['Android', 'Android development', 'Flutter', 'Kotlin', 'XML', 'Java',
-                                                  'Kivy', 'GIT', 'SDK', 'SQLite']
-                            recommended_keywords = st_tags(label='### Recommended skills for you.',
-                                                           text='Recommended skills generated from System',
-                                                           value=recommended_skills, key='4')
-                            st.markdown(
-                                '''<h4 style='text-align: left; color: #1ed760;'>Adding this skills to resume will boost🚀 the chances of getting a Job💼</h4>''',
-                                unsafe_allow_html=True)
-                            rec_course = course_recommender(android_course)
-                            break
+                                              'Kivy', 'GIT', 'SDK', 'SQLite']
+                            rec_course = android_course
 
-                        ## IOS App Development
-                        elif i.lower() in ios_keyword:
-                            print(i.lower())
-                            reco_field = 'IOS Development'
-                            st.success("** Our analysis says you are looking for IOS App Development Jobs **")
+                        elif reco_field == 'IOS Development':
+                            st.success("** Our analysis shows you are looking for IOS Development Jobs **")
                             recommended_skills = ['IOS', 'IOS Development', 'Swift', 'Cocoa', 'Cocoa Touch', 'Xcode',
-                                                  'Objective-C', 'SQLite', 'Plist', 'StoreKit', "UI-Kit", 'AV Foundation',
-                                                  'Auto-Layout']
-                            recommended_keywords = st_tags(label='### Recommended skills for you.',
-                                                           text='Recommended skills generated from System',
-                                                           value=recommended_skills, key='5')
-                            st.markdown(
-                                '''<h4 style='text-align: left; color: #1ed760;'>Adding this skills to resume will boost🚀 the chances of getting a Job💼</h4>''',
-                                unsafe_allow_html=True)
-                            rec_course = course_recommender(ios_course)
-                            break
+                                              'Objective-C', 'SQLite', 'Plist', 'StoreKit', 'UI-Kit', 'GIT']
+                            rec_course = ios_course
 
-                        ## Ui-UX Recommendation
-                        elif i.lower() in uiux_keyword:
-                            print(i.lower())
-                            reco_field = 'UI-UX Development'
-                            st.success("** Our analysis says you are looking for UI-UX Development Jobs **")
-                            recommended_skills = ['UI', 'User Experience', 'Adobe XD', 'Figma', 'Zeplin', 'Balsamiq',
-                                                  'Prototyping', 'Wireframes', 'Storyframes', 'Adobe Photoshop', 'Editing',
-                                                  'Illustrator', 'After Effects', 'Premier Pro', 'Indesign', 'Wireframe',
-                                                  'Solid', 'Grasp', 'User Research']
-                            recommended_keywords = st_tags(label='### Recommended skills for you.',
-                                                           text='Recommended skills generated from System',
-                                                           value=recommended_skills, key='6')
-                            st.markdown(
-                                '''<h4 style='text-align: left; color: #1ed760;'>Adding this skills to resume will boost🚀 the chances of getting a Job💼</h4>''',
-                                unsafe_allow_html=True)
-                            rec_course = course_recommender(uiux_course)
-                            break
+                        else:  # UI/UX
+                            st.success("** Our analysis shows you are looking for UI/UX Design Jobs **")
+                            recommended_skills = ['UI Design', 'UX Design', 'Wireframing', 'Prototyping', 'User Research',
+                                              'Figma', 'Adobe XD', 'Sketch', 'InVision', 'User Testing', 'Information Architecture']
+                            rec_course = uiux_course
 
+                        # Show recommendations
+                        recommended_keywords = st_tags(label='### Recommended skills for you',
+                                                   text='Recommended skills generated from your profile',
+                                                   value=recommended_skills, key='recommended_skills')
+                        
+                        st.markdown(
+                            '''<h4 style='text-align: left; color: #1ed760;'>Adding these skills to your resume will boost🚀 your chances of getting a Job💼</h4>''',
+                            unsafe_allow_html=True)
+                        
+                        # Show course recommendations
+                        rec_course = course_recommender(rec_course)
+                    else:
+                        st.warning("We couldn't determine your specific field. Please add more relevant skills to get better recommendations.")
                     #
                     ## Insert into table
                     ts = time.time()

@@ -18,9 +18,10 @@
             <a href="#" class="nav-brand">
                 📄 Smart Resume Analyzer
             </a>
-            <button class="mobile-menu-btn">☰</button>
+            <button class="mobile-menu-btn" aria-label="Toggle menu">☰</button>
             <div class="nav-links">
                 <a href="#overview" class="nav-link">Overview</a>
+                <a href="#libraries" class="nav-link">Libraries</a>
                 <a href="#features" class="nav-link">Features</a>
                 <a href="#setup" class="nav-link">Setup</a>
                 <a href="#api" class="nav-link">API</a>
@@ -133,39 +134,148 @@
 
             <!-- Libraries Section -->
             <section id="libraries" class="section">
-                <h2>Libraries and Dependencies</h2>
+                <h2>Libraries and Implementation Details</h2>
                 
                 <div class="library-section">
-                    <h3>Core Libraries</h3>
+                    <h3>Core Libraries and Their Usage</h3>
                     <div class="library-grid">
                         <div class="library-card">
-                            <h4>Web Framework</h4>
+                            <h4>Web Framework & UI</h4>
                             <ul>
-                                <li>streamlit>=1.40.0 - Main web framework</li>
-                                <li>plotly>=5.24.0 - Data visualization</li>
+                                <li><strong>streamlit>=1.40.0</strong>
+                                    <ul>
+                                        <li>Powers the entire web interface</li>
+                                        <li>Handles file uploads via <code>st.file_uploader</code></li>
+                                        <li>Creates interactive dashboard with <code>st.columns</code></li>
+                                        <li>Manages session state and caching</li>
+                                    </ul>
+                                </li>
+                                <li><strong>plotly>=5.24.0</strong>
+                                    <ul>
+                                        <li>Generates interactive visualizations</li>
+                                        <li>Creates skills radar charts</li>
+                                        <li>Displays resume score analytics</li>
+                                    </ul>
+                                </li>
+                                <li><strong>streamlit-tags>=1.2.8</strong>
+                                    <ul>
+                                        <li>Implements skill tagging interface</li>
+                                        <li>Manages dynamic skill input</li>
+                                    </ul>
+                                </li>
                             </ul>
                         </div>
+                        
                         <div class="library-card">
-                            <h4>Data Processing</h4>
+                            <h4>Resume Processing</h4>
                             <ul>
-                                <li>pandas>=2.2.0 - Data manipulation</li>
-                                <li>nltk>=3.9.0 - Natural language processing</li>
-                                <li>pdfminer3>=2018.12.3.0 - PDF parsing</li>
+                                <li><strong>pdfminer3>=2018.12.3.0</strong>
+                                    <ul>
+                                        <li>PDF text extraction via <code>PDFPageInterpreter</code></li>
+                                        <li>Layout analysis using <code>LAParams</code></li>
+                                        <li>Page management with <code>PDFPage</code></li>
+                                    </ul>
+                                </li>
+                                <li><strong>nltk>=3.9.0</strong>
+                                    <ul>
+                                        <li>Text tokenization and processing</li>
+                                        <li>Stopwords removal</li>
+                                        <li>Named entity recognition</li>
+                                    </ul>
+                                </li>
                             </ul>
                         </div>
+
                         <div class="library-card">
-                            <h4>UI Components</h4>
+                            <h4>Data Management</h4>
                             <ul>
-                                <li>streamlit-tags>=1.2.8 - Tag input component</li>
-                                <li>Pillow>=11.0.0 - Image processing</li>
+                                <li><strong>pandas>=2.2.0</strong>
+                                    <ul>
+                                        <li>Resume data analysis</li>
+                                        <li>Skills matrix creation</li>
+                                        <li>Course recommendations</li>
+                                    </ul>
+                                </li>
+                                <li><strong>sqlite3</strong>
+                                    <ul>
+                                        <li>Local database management</li>
+                                        <li>User data persistence</li>
+                                        <li>Analytics storage</li>
+                                    </ul>
+                                </li>
                             </ul>
                         </div>
                     </div>
-                </div>
 
-                <div class="code-section">
-                    <h3>Installation</h3>
-                    <pre><code>pip install -r requirements.txt</code></pre>
+                    <div class="implementation-details">
+                        <h3>Key Components</h3>
+                        
+                        <div class="component-card">
+                            <h4>Resume Parser (custom_parser.py)</h4>
+                            <p>Custom implementation for intelligent resume parsing:</p>
+                            <ul>
+                                <li>Text extraction using PDFMiner3</li>
+                                <li>Regular expressions for data extraction:
+                                    <ul>
+                                        <li>Name detection using capitalization patterns</li>
+                                        <li>Email extraction with RFC-compliant patterns</li>
+                                        <li>Phone number identification</li>
+                                        <li>Skills matching against predefined patterns</li>
+                                    </ul>
+                                </li>
+                                <li>Education and experience section identification</li>
+                            </ul>
+                        </div>
+
+                        <div class="component-card">
+                            <h4>Main Application (App.py)</h4>
+                            <p>Core application logic and UI implementation:</p>
+                            <ul>
+                                <li>File Management:
+                                    <ul>
+                                        <li><code>show_pdf()</code>: Secure PDF preview and download</li>
+                                        <li><code>pdf_reader()</code>: PDF text extraction</li>
+                                    </ul>
+                                </li>
+                                <li>Database Operations:
+                                    <ul>
+                                        <li><code>init_db()</code>: SQLite database initialization</li>
+                                        <li><code>insert_data()</code>: Resume data persistence</li>
+                                    </ul>
+                                </li>
+                                <li>Analytics:
+                                    <ul>
+                                        <li>Resume scoring algorithm</li>
+                                        <li>Skills gap analysis</li>
+                                        <li>Course recommendations</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="component-card">
+                            <h4>Course Recommendations (Courses.py)</h4>
+                            <p>Intelligent course suggestion system:</p>
+                            <ul>
+                                <li>Domain-specific course catalogs:
+                                    <ul>
+                                        <li>Data Science (<code>ds_course</code>)</li>
+                                        <li>Web Development (<code>web_course</code>)</li>
+                                        <li>Mobile Development (<code>android_course</code>, <code>ios_course</code>)</li>
+                                        <li>UI/UX Design (<code>uiux_course</code>)</li>
+                                    </ul>
+                                </li>
+                                <li>Video resources for interview preparation</li>
+                                <li>Resume improvement suggestions</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="code-section">
+                        <h3>Installation</h3>
+                        <pre><code>pip install -r requirements.txt</code></pre>
+                        <p>Note: NLTK data will be downloaded automatically on first run</p>
+                    </div>
                 </div>
             </section>
 
@@ -697,7 +807,7 @@ class SkillExtractor:
     """
     
     def __init__(self):
-        # Initialize NLP models and skill database
+        """Initialize NLP models and skill database"""
         self.nlp = spacy.load("en_core_web_sm")
         self.skill_patterns = load_skill_patterns()
     
@@ -746,7 +856,7 @@ class CourseRecommender:
     """
     
     def __init__(self):
-        # Initialize course database and matching algorithm
+        """Initialize course database and matching algorithm"""
         self.courses_db = load_courses_database()
         self.skill_matcher = SkillMatcher()
     
@@ -1120,56 +1230,18 @@ class RateLimiter:
         </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container footer-content">
-            <div>
-                <h3>Smart Resume Analyzer</h3>
-                <p>Empowering career decisions through intelligent resume analysis and personalized guidance</p>
-                <div class="social-icons">
-                    <a href="#" class="social-icon">📱</a>
-                    <a href="#" class="social-icon">💻</a>
-                    <a href="#" class="social-icon">📧</a>
-                    <a href="#" class="social-icon">🌐</a>
-                </div>
-            </div>
-            <div>
-                <h3>Resources</h3>
-                <ul>
-                    <li><a href="#">Documentation</a></li>
-                    <li><a href="#">API Reference</a></li>
-                    <li><a href="#">User Guide</a></li>
-                    <li><a href="#">Sample Projects</a></li>
-                </ul>
-            </div>
-            <div>
-                <h3>Support</h3>
-                <ul>
-                    <li><a href="#">Help Center</a></li>
-                    <li><a href="#">Report Issues</a></li>
-                    <li><a href="#">Feature Request</a></li>
-                    <li><a href="#">Contact Team</a></li>
-                </ul>
-            </div>
-        </div>
-        <div class="container">
-            <div class="footer-bottom">
-                <p>&copy; 2024 Smart Resume Analyzer. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
     <script>
         // Mobile menu toggle
         const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
         const navLinks = document.querySelector('.nav-links');
-        
+
         mobileMenuBtn.addEventListener('click', () => {
             navLinks.classList.toggle('active');
         });
 
         // Close mobile menu when clicking outside
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.nav') && navLinks.classList.contains('active')) {
+            if (!e.target.closest('.nav-content')) {
                 navLinks.classList.remove('active');
             }
         });

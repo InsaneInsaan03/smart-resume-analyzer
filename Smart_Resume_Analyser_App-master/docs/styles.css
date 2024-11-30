@@ -6,6 +6,7 @@
     --light-bg: #f3f4f6;
     --code-bg: #1f2937;
     --border-color: #e5e7eb;
+    --hover-bg: #f9fafb;
 }
 
 * {
@@ -19,6 +20,7 @@ body {
     line-height: 1.6;
     color: var(--text-color);
     background-color: #ffffff;
+    padding-top: 4rem;
 }
 
 .container {
@@ -29,68 +31,67 @@ body {
 
 /* Navigation */
 .nav {
-    background-color: #ffffff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    background-color: var(--light-bg);
+    border-bottom: 1px solid var(--border-color);
     position: fixed;
-    width: 100%;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: 1000;
-    height: 70px;
-    display: flex;
-    align-items: center;
+    backdrop-filter: blur(8px);
+    height: 4rem;
 }
 
 .nav-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
     padding: 0 1.5rem;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .nav-brand {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-color);
+    color: var(--primary-color);
     text-decoration: none;
+    font-weight: 600;
+    font-size: 1.25rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.nav-brand:hover {
-    color: var(--primary-color);
-}
-
 .nav-links {
     display: flex;
-    gap: 2rem;
+    gap: 1.5rem;
     align-items: center;
 }
 
 .nav-link {
     color: var(--text-color);
     text-decoration: none;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s;
     font-weight: 500;
     font-size: 0.95rem;
-    padding: 0.5rem 0;
-    border-bottom: 2px solid transparent;
-    transition: all 0.2s ease;
 }
 
 .nav-link:hover {
     color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
+    background-color: var(--hover-bg);
 }
 
-/* Mobile menu */
+/* Mobile menu button */
 .mobile-menu-btn {
     display: none;
     background: none;
     border: none;
-    color: var(--text-color);
+    font-size: 1.5rem;
     cursor: pointer;
     padding: 0.5rem;
+    color: var(--text-color);
 }
 
 @media (max-width: 768px) {
@@ -101,15 +102,13 @@ body {
     .nav-links {
         display: none;
         position: absolute;
-        top: 70px;
+        top: 100%;
         left: 0;
         right: 0;
-        background: #ffffff;
-        flex-direction: column;
+        background-color: var(--light-bg);
         padding: 1rem;
-        gap: 1rem;
-        border-top: 1px solid var(--border-color);
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        flex-direction: column;
+        border-bottom: 1px solid var(--border-color);
     }
 
     .nav-links.active {
@@ -123,34 +122,23 @@ body {
     }
 }
 
-/* Dark mode adjustments */
-@media (prefers-color-scheme: dark) {
-    .nav {
-        background-color: var(--code-bg);
-    }
+/* Add spacing for content below fixed nav */
+body {
+    padding-top: 4rem;
+}
 
-    .nav-brand,
-    .nav-link,
-    .mobile-menu-btn {
-        color: #f3f4f6;
-    }
-
-    .nav-link:hover {
-        color: var(--primary-color);
-    }
-
-    @media (max-width: 768px) {
-        .nav-links {
-            background-color: var(--code-bg);
-            border-top: 1px solid var(--border-color);
-        }
-    }
+/* Ensure hero section aligns properly */
+.hero {
+    margin-top: 0;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 4rem 0;
 }
 
 /* Main content */
 .content {
     padding: 4rem 0;
-    margin-top: 4rem;
+    margin-top: 0rem;
 }
 
 .section {
@@ -335,29 +323,6 @@ p {
 .faq-item p {
     color: #4b5563;
     font-size: 0.95rem;
-}
-
-/* Hero Section */
-.hero {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-    color: white;
-    padding: 6rem 0 4rem;
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-.hero h1 {
-    font-size: 3rem;
-    font-weight: 800;
-    margin-bottom: 1rem;
-    line-height: 1.2;
-}
-
-.hero p {
-    font-size: 1.25rem;
-    max-width: 600px;
-    margin: 0 auto;
-    opacity: 0.9;
 }
 
 /* Library Section */
@@ -581,7 +546,7 @@ th {
         background-color: #111827;
     }
 
-    .nav,
+    .navbar,
     .card,
     .resource-card,
     .contact-card,
@@ -590,7 +555,7 @@ th {
         background-color: #1f2937;
     }
 
-    .nav {
+    .navbar {
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
 
@@ -640,5 +605,79 @@ th {
     
     .social-icons {
         justify-content: center;
+    }
+}
+
+/* Implementation Details Section */
+.implementation-details {
+    margin-top: 3rem;
+}
+
+.component-card {
+    background-color: var(--light-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.component-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.component-card h4 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.component-card p {
+    margin-bottom: 1rem;
+    color: var(--text-color);
+}
+
+.component-card ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.component-card ul ul {
+    list-style: circle;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.component-card code {
+    background-color: var(--code-bg);
+    color: var(--primary-color);
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.9em;
+}
+
+.library-card ul ul {
+    margin-left: 1rem;
+    margin-top: 0.5rem;
+    list-style: disc;
+}
+
+.library-card strong {
+    color: var(--primary-color);
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+    .component-card {
+        background-color: #1f2937;
+    }
+
+    .component-card code {
+        background-color: #374151;
+        color: #93c5fd;
     }
 }
