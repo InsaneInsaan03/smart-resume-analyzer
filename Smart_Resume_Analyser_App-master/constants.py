@@ -4,6 +4,9 @@
 DB_PATH = "database/"  # Database directory
 DB_FILE = "user_data.db"  # Database file name
 
+# File upload configuration
+UPLOAD_DIR = "Uploaded_Resumes/"  # Upload directory for resumes
+
 # Database schema
 USER_TABLE_SCHEMA = '''CREATE TABLE IF NOT EXISTS user_data
                     (ID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,6 +29,3 @@ TYPING_MESSAGES = [
     "Discover Your Perfect Career Path 🎯",
     "Enhance Your Professional Journey 💼"
 ]
-
-# File paths
-UPLOAD_DIR = './Uploaded_Resumes'

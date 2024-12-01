@@ -4,14 +4,6 @@ import streamlit as st
 import base64
 from constants import TYPING_MESSAGES
 
-def setup_page_config():
-    """Configure the Streamlit page settings."""
-    st.set_page_config(
-        page_title="Smart Resume Analyzer",
-        page_icon='📄',
-        layout='wide'
-    )
-
 def get_custom_css():
     """Return custom CSS styles for the application."""
     return """

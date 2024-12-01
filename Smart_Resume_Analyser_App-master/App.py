@@ -3,8 +3,11 @@
 import streamlit as st
 import pandas as pd
 import time
-from pathlib import Path
 import os
+from modules.auth.auth_ui import AuthUI
+import sqlite3
+import hashlib
+from pathlib import Path
 import nltk
 from nltk.corpus import stopwords
 nltk.download('stopwords')
@@ -16,16 +19,9 @@ from resume_scorer import ResumeScorer
 from course_recommender import CourseRecommender
 from constants import UPLOAD_DIR, DB_PATH, DB_FILE
 from database_utils import init_db, insert_user_data, get_user_data
-from ui_utils import (
-    setup_page_config, 
-    get_custom_css, 
-    show_header,
-    get_table_download_link,
-    create_score_bar
-)
+from ui_utils import get_custom_css, show_header, get_table_download_link, create_score_bar
 from streamlit_tags import st_tags
 from PIL import Image
-import sqlite3
 import plotly.express as px
 from Courses import ds_course, web_course, android_course, ios_course, uiux_course, resume_videos, interview_videos
 from pdfminer3.layout import LAParams, LTTextBox
@@ -36,148 +32,325 @@ from pdfminer3.converter import TextConverter
 import io
 import requests
 
-# Initialize database on startup
+# Set page config first
+st.set_page_config(
+    page_title="Smart Resume Analyzer",
+    page_icon='📄',
+    layout='wide'
+)
+
+# Initialize session state
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+if 'user' not in st.session_state:
+    st.session_state.user = None
+if 'processed_files' not in st.session_state:
+    st.session_state.processed_files = set()
+if 'current_file' not in st.session_state:
+    st.session_state.current_file = None
+if 'resume_data' not in st.session_state:
+    st.session_state.resume_data = None
+if 'resume_text' not in st.session_state:
+    st.session_state.resume_text = None
+
+# Database functions
+def init_db():
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS users
+                 (username TEXT PRIMARY KEY, password TEXT, user_type TEXT)''')
+    conn.commit()
+    conn.close()
+
+def add_user(username, password, user_type):
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    try:
+        hashed_pw = hashlib.sha256(password.encode()).hexdigest()
+        c.execute("INSERT INTO users VALUES (?, ?, ?)", (username, hashed_pw, user_type))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+def verify_user(username, password):
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute("SELECT password, user_type FROM users WHERE username=?", (username,))
+    result = c.fetchone()
+    conn.close()
+    if result and result[0] == hashlib.sha256(password.encode()).hexdigest():
+        return True, result[1]
+    return False, None
+
+# Initialize database
 init_db()
 
-def pdf_reader(file):
-    """Extract text from PDF file."""
-    try:
-        parser = CustomResumeParser(file)
-        return parser.get_extracted_data()
-    except Exception as e:
-        st.error(f"Error reading PDF: {str(e)}")
-        return None
-
-def show_pdf(file_path):
-    try:
-        st.write("### Resume Preview")
-        st.write("📄 For security reasons, please use the download button to view the PDF.")
-        
-        # Create columns for better layout
-        col1, col2 = st.columns([1, 2])
-        
-        with col1:
-            # Read and provide download button
-            with open(file_path, "rb") as pdf_file:
-                PDFbyte = pdf_file.read()
-                
-            st.download_button(
-                label="📥 Download Resume",
-                data=PDFbyte,
-                file_name=os.path.basename(file_path),
-                mime='application/pdf',
-                key='download-resume'
-            )
-        
-        with col2:
-            # Show file information
-            file_size = os.path.getsize(file_path) / 1024  # Convert to KB
-            st.info(f"""
-            📋 File Information:
-            • Name: {os.path.basename(file_path)}
-            • Size: {file_size:.1f} KB
-            """)
-            
-    except Exception as e:
-        st.error(f"Error processing PDF: {e}")
-
-def create_default_logo():
-    # Create a simple colored rectangle as default logo
-    img = Image.new('RGB', (250, 250), color='#2E86C1')
-    return img
-
-def ensure_dir(dir_path):
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-
-def fetch_yt_video(link):
-    try:
-        # video = pafy.new(link)
-        # return video.title
-        return "Video Title" # Placeholder since pafy is not being used
-    except:
-        return link
-
-def load_lottieurl(url: str):
-    try:
-        r = requests.get(url)
-        if r.status_code != 200:
-            return None
-        return r.json()
-    except:
-        return None
-
-def get_score_insight(score):
-    if score >= 90:
-        return "Outstanding resume! Your profile demonstrates exceptional qualifications and presentation."
-    elif score >= 80:
-        return "Great resume! You have a strong profile with well-rounded qualifications."
-    elif score >= 70:
-        return "Good resume! Consider adding more details to strengthen your profile further."
-    elif score >= 60:
-        return "Decent resume. There's room for improvement in several areas."
-    else:
-        return "Your resume needs significant improvement. Focus on adding more details and achievements."
-
-def get_level_description(level):
-    descriptions = {
-        "Beginner": "Entry-level professional with foundational skills and knowledge.",
-        "Intermediate": "Mid-level professional with solid experience and proven capabilities.",
-        "Expert": "Senior professional with extensive experience and demonstrated leadership."
+# Custom CSS for navbar
+st.markdown("""
+    <style>
+    .navbar {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        padding: 1rem;
+        background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        gap: 1rem;
     }
-    return descriptions.get(level, "")
+    .nav-item {
+        color: white;
+        text-decoration: none;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
+        background-color: rgba(255,255,255,0.1);
+    }
+    .auth-form {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        z-index: 1000;
+        width: 300px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Navbar
+def navbar():
+    if st.session_state.authenticated:
+        st.markdown(f"""
+            <div class="navbar">
+                <div style="color: white; margin-right: auto;">
+                    Welcome, {st.session_state.get('username', '')} ({st.session_state.get('user_type', '')})
+                </div>
+                <a href="#" class="nav-item" onclick="signOut()">Sign Out</a>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        col1, col2, col3 = st.columns([6,1,1])
+        with col2:
+            if st.button("Sign In"):
+                st.session_state.show_signin = True
+        with col3:
+            if st.button("Sign Up"):
+                st.session_state.show_signup = True
+
+# Authentication forms
+if 'show_signin' in st.session_state and st.session_state.show_signin:
+    with st.form("signin_form"):
+        st.subheader("Sign In")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        user_type = st.selectbox("User Type", ["Normal User", "Admin"])
+        submitted = st.form_submit_button("Sign In")
+        if submitted:
+            success, stored_type = verify_user(username, password)
+            if success and stored_type == user_type:
+                st.session_state.authenticated = True
+                st.session_state.user = {'username': username, 'user_type': user_type}
+                st.session_state.show_signin = False
+                st.experimental_rerun()
+            else:
+                st.error("Invalid credentials")
+
+if 'show_signup' in st.session_state and st.session_state.show_signup:
+    with st.form("signup_form"):
+        st.subheader("Sign Up")
+        new_username = st.text_input("Username")
+        new_password = st.text_input("Password", type="password")
+        confirm_password = st.text_input("Confirm Password", type="password")
+        user_type = st.selectbox("User Type", ["Normal User", "Admin"])
+        submitted = st.form_submit_button("Sign Up")
+        if submitted:
+            if new_password != confirm_password:
+                st.error("Passwords do not match")
+            elif not new_username or not new_password:
+                st.error("Please fill all fields")
+            else:
+                if add_user(new_username, new_password, user_type):
+                    st.success("Account created successfully!")
+                    st.session_state.show_signup = False
+                    st.experimental_rerun()
+                else:
+                    st.error("Username already exists")
+
+def extract_text_from_pdf(pdf_path):
+    """Extract text from uploaded PDF file"""
+    try:
+        # Create a PDF resource manager object
+        resource_manager = PDFResourceManager()
+        
+        # Create a string buffer object
+        fake_file_handle = io.StringIO()
+        
+        # Create a converter object
+        converter = TextConverter(
+            resource_manager, 
+            fake_file_handle, 
+            laparams=LAParams()
+        )
+        
+        # Create a PDF interpreter object
+        interpreter = PDFPageInterpreter(resource_manager, converter)
+        
+        # Open the PDF file using the full path
+        pdf_file_obj = open(pdf_path, 'rb')
+        
+        # Get pages from the PDF file
+        for page in PDFPage.get_pages(
+            pdf_file_obj, 
+            caching=True,
+            check_extractable=True
+        ):
+            interpreter.process_page(page)
+            
+        # Get the text from the StringIO buffer
+        text = fake_file_handle.getvalue()
+        
+        # Close all objects
+        converter.close()
+        fake_file_handle.close()
+        pdf_file_obj.close()
+        
+        return text
+        
+    except Exception as e:
+        st.error(f'Error processing PDF: {str(e)}')
+        return None
 
 def main():
-    """Main function to run the Streamlit application."""
-    # Setup page configuration
-    setup_page_config()
-    
-    # Add custom CSS
+    """Main function for the Smart Resume Analyzer App"""
     st.markdown(get_custom_css(), unsafe_allow_html=True)
     
-    # Show header with typing animation
+    # Authentication handling
+    auth_ui = AuthUI()
+    
+    if not st.session_state.authenticated:
+        auth_ui.render()
+        return
+    
+    # Main app UI after authentication
     show_header()
-
-    # Initialize session state
-    if 'processed_files' not in st.session_state:
-        st.session_state.processed_files = set()
-    if 'current_file' not in st.session_state:
-        st.session_state.current_file = None
-    if 'resume_data' not in st.session_state:
-        st.session_state.resume_data = None
-    if 'resume_text' not in st.session_state:
-        st.session_state.resume_text = None
-
-    # Sidebar user selection
-    st.sidebar.markdown('<h2 class="sub-header">👤 Choose User</h2>', unsafe_allow_html=True)
+    
+    user = st.session_state.user
+    st.write(f"Welcome {user['username']}!")
+    
+    # Display navbar
+    navbar()
+    
+    # Sidebar user selection with modern design
+    st.sidebar.markdown("""
+        <div style="
+            background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        ">
+            <h2 style="
+                color: white;
+                margin: 0;
+                font-size: 20px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            ">
+                <span>👤</span> Choose User Type
+            </h2>
+        </div>
+    """, unsafe_allow_html=True)
+    
     activities = ["Normal User", "Admin"]
-    choice = st.sidebar.selectbox("Select User Type:", activities)
+    choice = st.sidebar.selectbox("", activities)  # Removed label as it's in the header
 
     if choice == 'Normal User':
         st.markdown("""
-            <div class="info-card">
-                <h4>📋 Upload Your Resume</h4>
-                <p>Get smart recommendations based on your resume content.</p>
+            <div style="
+                background: linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%);
+                padding: 25px;
+                border-radius: 15px;
+                margin: 25px 0;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            ">
+                <h1 style="
+                    color: #2b5876;
+                    margin: 0 0 10px 0;
+                    font-size: 28px;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                ">
+                    <span>📋</span> Smart Resume Analyzer
+                </h1>
+                <p style="
+                    color: #2b5876;
+                    margin: 0;
+                    font-size: 16px;
+                ">Upload your resume to get personalized insights and recommendations.</p>
             </div>
         """, unsafe_allow_html=True)
 
-        # Create upload directory if it doesn't exist
+        # Ensure upload directory exists
         if not os.path.exists(UPLOAD_DIR):
             os.makedirs(UPLOAD_DIR)
 
-        # File upload
-        pdf_file = st.file_uploader("Choose your Resume (PDF)", type=["pdf"])
+        # File upload with modern design
+        st.markdown("""
+            <div style="
+                background: white;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                margin-bottom: 20px;
+            ">
+                <div style="
+                    color: #2b5876;
+                    font-weight: 500;
+                    margin-bottom: 10px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                ">
+                    <span>📤</span> Upload Your Resume
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        pdf_file = st.file_uploader(
+            "Upload Your Resume", 
+            type=["pdf"],
+            help="Please upload a PDF file"
+        )
         
         if pdf_file is None:
-            st.info("👋 Welcome! Please upload your resume in PDF format to begin the analysis.")
             st.markdown("""
-                <div style='background-color: #f0f2f6; padding: 15px; border-radius: 5px; margin-top: 10px;'>
-                    <h4>📝 Getting Started:</h4>
-                    <ol>
-                        <li>Prepare your resume in PDF format</li>
-                        <li>Click the 'Browse files' button above</li>
-                        <li>Select your resume file</li>
-                    </ol>
+                <div style="
+                    background: #f8f9fa;
+                    border-left: 4px solid #2b5876;
+                    padding: 20px;
+                    border-radius: 5px;
+                    margin: 20px 0;
+                ">
+                    <div style="
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        color: #2b5876;
+                    ">
+                        <span style="font-size: 24px;">👋</span>
+                        <div>
+                            <div style="font-weight: 500; margin-bottom: 5px;">Welcome!</div>
+                            <div style="color: #666; font-size: 14px;">Please upload your resume in PDF format to begin the analysis.</div>
+                        </div>
+                    </div>
                 </div>
             """, unsafe_allow_html=True)
             return
@@ -185,42 +358,29 @@ def main():
         # Process new file
         if pdf_file is not None and pdf_file.name not in st.session_state.processed_files:
             try:
-                # Save and process the file
+                # Create upload directory if it doesn't exist
+                os.makedirs(UPLOAD_DIR, exist_ok=True)
+                
+                # Save uploaded file to UPLOAD_DIR
                 save_path = os.path.join(UPLOAD_DIR, pdf_file.name)
                 with open(save_path, "wb") as f:
                     f.write(pdf_file.getbuffer())
 
-                # Extract and parse resume data
-                st.session_state.resume_text = pdf_reader(save_path)
-                if not st.session_state.resume_text:
-                    raise ValueError("Could not extract text from PDF")
+                # Extract text from PDF using the saved file path
+                resume_text = extract_text_from_pdf(save_path)
                 
-                st.session_state.resume_data = CustomResumeParser(save_path).get_extracted_data()
-                if not st.session_state.resume_data:
-                    raise ValueError("Could not parse resume data")
-                
-                st.session_state.processed_files.add(pdf_file.name)
-                
-                # Show loading progress
-                loading_placeholder = st.empty()
-                progress_bar = st.progress(0)
-                loading_time = random.uniform(5, 8)
-                steps = int(loading_time * 2)
-                
-                for i in range(steps):
-                    progress = min(100, int((i + 1) / steps * 100))
-                    progress_bar.progress(progress / 100)
-                    loading_placeholder.info(f"Analyzing your resume... {progress}%")
-                    time.sleep(loading_time / steps)
-                
-                loading_placeholder.empty()
-                progress_bar.empty()
-                
-                # Show success message
-                success_placeholder = st.empty()
-                success_placeholder.success("🎉 Analysis Complete! We've analyzed your resume and prepared personalized recommendations for you!")
-                time.sleep(3)
-                success_placeholder.empty()
+                if resume_text:
+                    st.session_state.resume_text = resume_text
+                    st.session_state.current_file = pdf_file.name
+                    st.session_state.processed_files.add(pdf_file.name)
+                    
+                    # Parse resume
+                    parser = CustomResumeParser(save_path)  # Pass the file path instead of text
+                    resume_data = parser.get_extracted_data()  # Use the correct method name
+                    st.session_state.resume_data = resume_data
+                    
+                    st.success("Resume processed successfully!")
+                    st.rerun()
                 
             except Exception as e:
                 st.error(f"Error processing resume: {str(e)}")
@@ -244,75 +404,65 @@ def main():
                 score_details['completeness_score'] * 0.15
             )
             
-            # Score breakdown in a compact card
+            # Score breakdown in a modern card with gradient
             st.markdown(f"""
                 <div style="
-                    background: white;
-                    padding: 1.2rem;
-                    border-radius: 10px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-                    margin-bottom: 1.5rem;
+                    background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+                    padding: 25px;
+                    border-radius: 15px;
+                    margin: 25px 0;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                    color: white;
                 ">
-                    <div style="
+                    <h2 style="
+                        margin: 0 0 20px 0;
+                        font-size: 24px;
                         display: flex;
                         align-items: center;
-                        margin-bottom: 1rem;
+                        gap: 10px;
                     ">
-                        <div style="
-                            font-size: 2rem;
-                            font-weight: bold;
-                            color: #1e88e5;
-                            margin-right: 1rem;
-                        ">
-                            {total_score}%
-                        </div>
-                        <div>
-                            <div style="font-weight: 500; color: #666;">Overall Score</div>
-                            <div style="color: #1e88e5; font-weight: 500;">
-                                {score_details['experience_level']} Level
-                            </div>
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 0.5rem;">Score Breakdown</div>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # Score bars
-            create_score_bar("Experience", score_details['experience_score'], "#43a047")
-            create_score_bar("Skills", score_details['skills_score'], "#fb8c00")
-            create_score_bar("Education", score_details['education_score'], "#8e24aa")
-            create_score_bar("Completeness", score_details['completeness_score'], "#1e88e5")
-            
-            # Key insights in a compact format
-            st.markdown(f"""
-                <div style="
-                    background: white;
-                    padding: 1.2rem;
-                    border-radius: 10px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-                    margin: 1.5rem 0;
-                ">
-                    <div style="font-weight: 500; margin-bottom: 1rem;">🎯 Key Insights</div>
+                        <span>📊</span> Resume Score Analysis
+                    </h2>
                     <div style="
                         display: grid;
                         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                        gap: 1rem;
+                        gap: 20px;
                     ">
-                        <div>
-                            <div style="color: #666; font-size: 0.9rem;">Technical Skills</div>
-                            <div style="font-weight: 500;">{len(score_details['technical_skills'])} found</div>
+                        <div style="
+                            background: rgba(255,255,255,0.1);
+                            padding: 15px;
+                            border-radius: 10px;
+                            text-align: center;
+                        ">
+                            <div style="font-size: 32px; font-weight: bold;">{total_score}%</div>
+                            <div style="opacity: 0.9;">Overall Score</div>
                         </div>
-                        <div>
-                            <div style="color: #666; font-size: 0.9rem;">Soft Skills</div>
-                            <div style="font-weight: 500;">{len(score_details['soft_skills'])} found</div>
+                        <div style="
+                            background: rgba(255,255,255,0.1);
+                            padding: 15px;
+                            border-radius: 10px;
+                            text-align: center;
+                        ">
+                            <div style="font-size: 24px; font-weight: bold;">{score_details['experience_score']}%</div>
+                            <div style="opacity: 0.9;">Experience</div>
                         </div>
-                        <div>
-                            <div style="color: #666; font-size: 0.9rem;">Education</div>
-                            <div style="font-weight: 500;">{len(resume_data['education'])} qualifications</div>
+                        <div style="
+                            background: rgba(255,255,255,0.1);
+                            padding: 15px;
+                            border-radius: 10px;
+                            text-align: center;
+                        ">
+                            <div style="font-size: 24px; font-weight: bold;">{score_details['skills_score']}%</div>
+                            <div style="opacity: 0.9;">Skills</div>
                         </div>
-                        <div>
-                            <div style="color: #666; font-size: 0.9rem;">Experience</div>
-                            <div style="font-weight: 500;">{len(resume_data['experience'])} roles</div>
+                        <div style="
+                            background: rgba(255,255,255,0.1);
+                            padding: 15px;
+                            border-radius: 10px;
+                            text-align: center;
+                        ">
+                            <div style="font-size: 24px; font-weight: bold;">{score_details['education_score']}%</div>
+                            <div style="opacity: 0.9;">Education</div>
                         </div>
                     </div>
                 </div>
@@ -561,31 +711,330 @@ def main():
                         st.markdown(f'''
                             <a href="{course_link}" 
                                target="_blank"
-                               rel="noopener noreferrer"
                                style="
                                     display: block;
+                                    text-decoration: none;
+                                    cursor: pointer;
                                     padding: 1rem;
                                     margin: 0.8rem 0;
-                                    background: linear-gradient(135deg, #f6f9fc 0%, #f1f4f9 100%);
+                                    background: #f0f2f6;
                                     border-radius: 8px;
-                                    color: #2b5876;
-                                    text-decoration: none;
                                     border-left: 4px solid #2b5876;
+                                    color: #2b5876;
                                 ">
-                                <span style="margin-right: 10px;">🔗</span>
-                                {course_name}
+                                <span>🔗 {course_name}</span>
                                 <span style="float: right;">↗️</span>
                             </a>
                         ''', unsafe_allow_html=True)
                 else:
                     st.info("Add skills to get personalized course recommendations")
+                
+                # Modern Resume Insights Section with Enhanced UI
+                st.markdown("""
+                    <div style="
+                        background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+                        padding: 25px;
+                        border-radius: 15px;
+                        margin: 25px 0;
+                        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                    ">
+                        <h2 style="
+                            color: white;
+                            margin-bottom: 15px;
+                            font-size: 24px;
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                        ">
+                            <span>📋</span> Resume Intelligence Report
+                        </h2>
+                        <p style="color: #e0e0e0; margin: 0;">Comprehensive analysis of your professional profile</p>
+                    </div>
+                """, unsafe_allow_html=True)
+
+                # Strengths Analysis with Modern Cards
+                st.markdown("""
+                    <div style="
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        margin: 20px 0;
+                        background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
+                        padding: 15px;
+                        border-radius: 10px;
+                        color: white;
+                    ">
+                        <span style="font-size: 24px;">💪</span>
+                        <h3 style="margin: 0; color: white;">Professional Strengths</h3>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                strengths = []
+                
+                # Technical Skills Analysis
+                skills = resume_data['skills']
+                if len(skills) >= 5:
+                    skill_strength = "🛠️ Strong technical skill set with {} different skills".format(len(skills))
+                    if len(skills) >= 8:
+                        skill_strength += " - Impressive variety! 🌟"
+                    strengths.append(skill_strength)
+                    
+                    # Check for in-demand skills
+                    in_demand_skills = ['python', 'java', 'javascript', 'react', 'sql', 'machine learning', 'aws', 'docker']
+                    matched_demands = [skill for skill in skills if any(demand in skill.lower() for demand in in_demand_skills)]
+                    if matched_demands:
+                        strengths.append("🚀 Possesses in-demand skills: " + ", ".join(matched_demands[:3]))
+
+                # Experience Analysis
+                experience = resume_data['experience']
+                if experience:
+                    exp_years = len(experience)
+                    if exp_years >= 2:
+                        strengths.append(f"💼 Strong work history with {exp_years} different roles")
+                    
+                    detailed_exp = [exp for exp in experience if len(exp.split()) > 10]
+                    if detailed_exp:
+                        strengths.append("📝 Detailed work experience descriptions")
+                    
+                    achievement_keywords = ['achieved', 'improved', 'increased', 'reduced', 'led', 'managed', 'developed']
+                    achievements = [exp for exp in experience if any(keyword in exp.lower() for keyword in achievement_keywords)]
+                    if achievements:
+                        strengths.append("🏆 Contains quantifiable achievements and leadership examples")
+
+                # Education Analysis
+                education = resume_data['education']
+                if education:
+                    edu_str = "🎓 Strong educational background with {} qualification(s)".format(len(education))
+                    higher_edu_keywords = ['master', 'phd', 'bachelor', 'degree']
+                    if any(keyword in str(education).lower() for keyword in higher_edu_keywords):
+                        edu_str += " including higher education ✨"
+                    strengths.append(edu_str)
+
+                # Overall Score Analysis
+                if total_score >= 80:
+                    strengths.append(f"⭐ Exceptional overall resume score: {total_score}%")
+                elif total_score >= 60:
+                    strengths.append(f"📈 Above average resume score: {total_score}%")
+
+                # Display strengths in modern cards
+                for strength in strengths:
+                    st.markdown(f"""
+                        <div style="
+                            margin: 10px 0;
+                            padding: 15px;
+                            background: white;
+                            border-radius: 10px;
+                            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+                            border-left: 5px solid #43cea2;
+                            font-size: 16px;
+                            color: #2c3e50;
+                        ">{strength}</div>
+                    """, unsafe_allow_html=True)
+
+                # Areas for Improvement with Modern UI
+                st.markdown("""
+                    <div style="
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                        margin: 30px 0 20px 0;
+                        background: linear-gradient(90deg, #ff6b6b 0%, #556270 100%);
+                        padding: 15px;
+                        border-radius: 10px;
+                        color: white;
+                    ">
+                        <span style="font-size: 24px;">🎯</span>
+                        <h3 style="margin: 0; color: white;">Growth Opportunities</h3>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                improvements = []
+                
+                # Skills Improvements
+                if len(skills) < 5:
+                    improvements.append({
+                        'icon': '⚡',
+                        'area': 'Technical Skills',
+                        'issue': f"Currently only {len(skills)} skills listed",
+                        'suggestion': "Add more relevant technical skills, especially those mentioned in job descriptions in your field"
+                    })
+                else:
+                    improvements.append({
+                        'icon': '🔍',
+                        'area': 'Skills Organization',
+                        'issue': 'Skills could be better organized',
+                        'suggestion': "Consider grouping your skills into categories (e.g., Programming Languages, Tools, Soft Skills)"
+                    })
+
+                # Experience Improvements
+                if not experience:
+                    improvements.append({
+                        'icon': '💼',
+                        'area': 'Work Experience',
+                        'issue': 'Limited work experience section',
+                        'suggestion': "Add internships, projects, or volunteer work if you're new to the field"
+                    })
+                else:
+                    if not any(len(exp.split()) > 15 for exp in experience):
+                        improvements.append({
+                            'icon': '📝',
+                            'area': 'Experience Descriptions',
+                            'issue': 'Brief experience descriptions',
+                            'suggestion': "Expand your role descriptions with specific responsibilities and achievements"
+                        })
+                    
+                    if not any(keyword in str(experience).lower() for keyword in ['achieved', 'improved', 'increased', 'reduced']):
+                        improvements.append({
+                            'icon': '📊',
+                            'area': 'Achievements',
+                            'issue': 'Limited quantifiable achievements',
+                            'suggestion': "Add specific metrics and numbers to showcase your impact (e.g., 'Improved efficiency by 25%')"
+                        })
+
+                # Education Improvements
+                if not education:
+                    improvements.append({
+                        'icon': '🎓',
+                        'area': 'Education',
+                        'issue': 'Education section needs enhancement',
+                        'suggestion': "Add your educational background, including relevant coursework and certifications"
+                    })
+
+                # Score-based Improvements
+                if total_score < 60:
+                    improvements.append({
+                        'icon': '📈',
+                        'area': 'Overall Resume',
+                        'issue': f"Current resume score: {total_score}%",
+                        'suggestion': "Focus on adding more detailed experience descriptions and relevant skills to improve your score"
+                    })
+
+                # Display improvements in modern cards
+                for imp in improvements:
+                    st.markdown(f"""
+                        <div style="
+                            margin: 15px 0;
+                            padding: 20px;
+                            background: white;
+                            border-radius: 12px;
+                            box-shadow: 0 3px 12px rgba(0,0,0,0.07);
+                            border-left: 5px solid #ff6b6b;
+                        ">
+                            <div style="
+                                display: flex;
+                                align-items: center;
+                                gap: 10px;
+                                margin-bottom: 10px;
+                            ">
+                                <span style="font-size: 24px;">{imp['icon']}</span>
+                                <div style="
+                                    color: #2b5876;
+                                    font-weight: 600;
+                                    font-size: 18px;
+                                ">{imp['area']}</div>
+                            </div>
+                            <div style="
+                                color: #666;
+                                margin-bottom: 8px;
+                                font-size: 14px;
+                            ">Current: {imp['issue']}</div>
+                            <div style="
+                                color: #1e88e5;
+                                font-size: 15px;
+                                line-height: 1.5;
+                            ">💡 {imp['suggestion']}</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+                # Enhanced Action Steps with Modern UI
+                if improvements:
+                    st.markdown("""
+                        <div style="
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                            margin: 30px 0 20px 0;
+                            background: linear-gradient(90deg, #4e54c8 0%, #8f94fb 100%);
+                            padding: 15px;
+                            border-radius: 10px;
+                            color: white;
+                        ">
+                            <span style="font-size: 24px;">🚀</span>
+                            <h3 style="margin: 0; color: white;">Next Steps for Success</h3>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                        <div style="
+                            background: white;
+                            padding: 25px;
+                            border-radius: 12px;
+                            box-shadow: 0 3px 12px rgba(0,0,0,0.07);
+                            margin: 10px 0;
+                        ">
+                            <div style="
+                                color: #2b5876;
+                                font-weight: 500;
+                                margin-bottom: 20px;
+                                font-size: 17px;
+                            ">Follow these steps to elevate your resume:</div>
+                            <ol style="
+                                margin: 0;
+                                padding-left: 20px;
+                                color: #2c3e50;
+                            ">
+                                <li style="margin: 12px 0;">🎯 Review and prioritize the improvement suggestions above based on your career goals</li>
+                                <li style="margin: 12px 0;">📊 Add measurable achievements to showcase your impact</li>
+                                <li style="margin: 12px 0;">🔍 Align your skills with industry requirements</li>
+                                <li style="margin: 12px 0;">🔑 Incorporate relevant keywords from target job descriptions</li>
+                                <li style="margin: 12px 0;">🔄 Re-analyze your resume here after making updates</li>
+                            </ol>
+                        </div>
+                    """, unsafe_allow_html=True)
         else:
             st.error('Something went wrong..')
     else:
-        ## Admin Side
-        st.success('Welcome to Admin Side')
-        # st.sidebar.subheader('**ID / Password Required!**')
+        ## Admin Side with modern design
+        st.markdown("""
+            <div style="
+                background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+                padding: 25px;
+                border-radius: 15px;
+                margin: 25px 0;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            ">
+                <h2 style="
+                    color: white;
+                    margin: 0 0 10px 0;
+                    font-size: 24px;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                ">
+                    <span>👨‍💼</span> Admin Dashboard
+                </h2>
+                <p style="color: #e0e0e0; margin: 0;">Access administrative features and analytics</p>
+            </div>
+        """, unsafe_allow_html=True)
 
+        # Admin login with modern card design
+        st.markdown("""
+            <div style="
+                background: white;
+                padding: 25px;
+                border-radius: 12px;
+                box-shadow: 0 3px 12px rgba(0,0,0,0.07);
+                margin: 20px 0;
+            ">
+                <div style="
+                    color: #2b5876;
+                    font-weight: 500;
+                    margin-bottom: 20px;
+                    font-size: 18px;
+                ">🔐 Admin Login</div>
+            </div>
+        """, unsafe_allow_html=True)
+        
         ad_user = st.text_input("Username")
         ad_password = st.text_input("Password", type='password')
         if st.button('Login'):
