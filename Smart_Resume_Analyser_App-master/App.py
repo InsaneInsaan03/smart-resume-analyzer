@@ -35,7 +35,14 @@ from pdfminer3.pdfinterp import PDFPageInterpreter
 from pdfminer3.converter import TextConverter
 import io
 import requests
-from login import LoginUI
+try:
+    from login import LoginUI
+except ImportError:
+    # Fallback for Streamlit Cloud
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    from login import LoginUI
 from hashlib import sha256
 
 # Set page configuration
@@ -44,6 +51,10 @@ st.set_page_config(
     page_icon='📄',
     layout='wide'
 )
+
+# Create necessary directories if they don't exist
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(DB_PATH, exist_ok=True)
 
 # Initialize login system
 login_ui = LoginUI()
