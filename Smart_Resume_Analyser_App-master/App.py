@@ -7,7 +7,11 @@ from pathlib import Path
 import os
 import nltk
 from nltk.corpus import stopwords
-nltk.download('stopwords')
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords')
+    nltk.download('punkt')
 from nltk.tokenize import word_tokenize
 import base64, random
 import datetime
@@ -61,8 +65,11 @@ if 'username' not in st.session_state:
     st.session_state.username = None
 
 # Create necessary directories if they don't exist
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(DB_PATH, exist_ok=True)
+try:
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    os.makedirs(DB_PATH, exist_ok=True)
+except Exception as e:
+    st.warning(f"Note: Directory creation failed - this is normal in Streamlit Cloud. Error: {e}")
 
 # Initialize login system
 login_ui = LoginUI()
@@ -70,38 +77,45 @@ login_ui = LoginUI()
 # Initialize resume database
 def init_db():
     """Initialize the database and create tables if they don't exist"""
-    conn = sqlite3.connect('resume_data.db')
-    c = conn.cursor()
-    
-    # Create user_data table if it doesn't exist
-    c.execute('''CREATE TABLE IF NOT EXISTS user_data
-                (ID TEXT PRIMARY KEY,
-                Name TEXT,
-                Email TEXT,
-                Resume_Score TEXT,
-                Timestamp TEXT,
-                Total_Page TEXT,
-                Predicted_Field TEXT,
-                User_Level TEXT,
-                Actual_Skills TEXT,
-                Recommended_Skills TEXT,
-                Recommended_Courses TEXT,
-                PDF_Name TEXT,
-                Original_Resume_Path TEXT)''')
-    
-    # Check if Original_Resume_Path column exists, if not add it
-    cursor = conn.execute('PRAGMA table_info(user_data)')
-    columns = [column[1] for column in cursor.fetchall()]
-    
-    if 'Original_Resume_Path' not in columns:
-        try:
-            c.execute('ALTER TABLE user_data ADD COLUMN Original_Resume_Path TEXT')
-            conn.commit()
-        except sqlite3.Error as e:
-            print(f"Error adding column: {e}")
-    
-    conn.commit()
-    conn.close()
+    try:
+        # Use absolute path for database in Streamlit Cloud
+        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resume_data.db')
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        
+        # Create user_data table if it doesn't exist
+        c.execute('''CREATE TABLE IF NOT EXISTS user_data
+                    (ID TEXT PRIMARY KEY,
+                    Name TEXT,
+                    Email TEXT,
+                    Resume_Score TEXT,
+                    Timestamp TEXT,
+                    Total_Page TEXT,
+                    Predicted_Field TEXT,
+                    User_Level TEXT,
+                    Actual_Skills TEXT,
+                    Recommended_Skills TEXT,
+                    Recommended_Courses TEXT,
+                    PDF_Name TEXT,
+                    Original_Resume_Path TEXT)''')
+        
+        # Check if Original_Resume_Path column exists, if not add it
+        cursor = conn.execute('PRAGMA table_info(user_data)')
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'Original_Resume_Path' not in columns:
+            try:
+                c.execute('ALTER TABLE user_data ADD COLUMN Original_Resume_Path TEXT')
+                conn.commit()
+            except sqlite3.Error as e:
+                st.error(f"Error adding column: {e}")
+        
+        conn.commit()
+    except Exception as e:
+        st.error(f"Database initialization error: {e}")
+    finally:
+        if 'conn' in locals():
+            conn.close()
 
 # Initialize session state
 if 'processed_files' not in st.session_state:
