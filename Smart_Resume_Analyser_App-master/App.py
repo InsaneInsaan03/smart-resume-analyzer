@@ -35,15 +35,102 @@ from pdfminer3.pdfinterp import PDFPageInterpreter
 from pdfminer3.converter import TextConverter
 import io
 import requests
-try:
-    from login import LoginUI
-except ImportError:
-    # Fallback for Streamlit Cloud
-    import sys
-    import os
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    from login import LoginUI
 from hashlib import sha256
+
+# LoginUI class implementation
+class LoginUI:
+    def __init__(self):
+        self.init_db()
+        if 'authenticated' not in st.session_state:
+            st.session_state.authenticated = False
+        if 'user_type' not in st.session_state:
+            st.session_state.user_type = None
+        if 'username' not in st.session_state:
+            st.session_state.username = None
+
+    def init_db(self):
+        conn = sqlite3.connect('users.db')
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS users
+                    (username TEXT PRIMARY KEY, 
+                     password TEXT NOT NULL,
+                     user_type TEXT NOT NULL)''')
+        conn.commit()
+        conn.close()
+
+    def hash_password(self, password):
+        return sha256(password.encode()).hexdigest()
+
+    def create_user(self, username, password, user_type='user'):
+        hashed_password = self.hash_password(password)
+        conn = sqlite3.connect('users.db')
+        c = conn.cursor()
+        try:
+            c.execute('INSERT INTO users (username, password, user_type) VALUES (?, ?, ?)',
+                     (username, hashed_password, user_type))
+            conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            return False
+        finally:
+            conn.close()
+
+    def verify_user(self, username, password):
+        hashed_password = self.hash_password(password)
+        conn = sqlite3.connect('users.db')
+        c = conn.cursor()
+        c.execute('SELECT user_type FROM users WHERE username=? AND password=?',
+                 (username, hashed_password))
+        result = c.fetchone()
+        conn.close()
+        return result[0] if result else None
+
+    def login_form(self):
+        if st.session_state.authenticated:
+            return True
+
+        st.subheader("Login")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Login"):
+                user_type = self.verify_user(username, password)
+                if user_type:
+                    st.session_state.authenticated = True
+                    st.session_state.user_type = user_type
+                    st.session_state.username = username
+                    st.success("Logged in successfully!")
+                    st.rerun()
+                else:
+                    st.error("Invalid username or password")
+                    return False
+        
+        with col2:
+            if st.button("Register"):
+                if username and password:
+                    if self.create_user(username, password):
+                        st.success("Registration successful! Please login.")
+                    else:
+                        st.error("Username already exists")
+                else:
+                    st.error("Please enter both username and password")
+                return False
+
+        return st.session_state.authenticated
+
+    def is_admin(self):
+        return st.session_state.get('user_type') == 'admin'
+
+    def logout(self):
+        st.session_state.authenticated = False
+        st.session_state.user_type = None
+        st.session_state.username = None
+        st.rerun()
+
+# Initialize login system
+login_ui = LoginUI()
 
 # Set page configuration
 st.set_page_config(
@@ -55,9 +142,6 @@ st.set_page_config(
 # Create necessary directories if they don't exist
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(DB_PATH, exist_ok=True)
-
-# Initialize login system
-login_ui = LoginUI()
 
 # Initialize resume database
 def init_db():
