@@ -3,11 +3,8 @@
 import streamlit as st
 import pandas as pd
 import time
-import os
-from modules.auth.auth_ui import AuthUI
-import sqlite3
-import hashlib
 from pathlib import Path
+import os
 import nltk
 from nltk.corpus import stopwords
 nltk.download('stopwords')
@@ -19,10 +16,17 @@ from resume_scorer import ResumeScorer
 from course_recommender import CourseRecommender
 from constants import UPLOAD_DIR, DB_PATH, DB_FILE
 from database_utils import init_db, insert_user_data, get_user_data
-from ui_utils import get_custom_css, show_header, get_table_download_link, create_score_bar
+from ui_utils import (
+    get_custom_css, 
+    show_header,
+    get_table_download_link,
+    create_score_bar
+)
 from streamlit_tags import st_tags
 from PIL import Image
+import sqlite3
 import plotly.express as px
+import plotly.graph_objects as go
 from Courses import ds_course, web_course, android_course, ios_course, uiux_course, resume_videos, interview_videos
 from pdfminer3.layout import LAParams, LTTextBox
 from pdfminer3.pdfpage import PDFPage
@@ -31,19 +35,56 @@ from pdfminer3.pdfinterp import PDFPageInterpreter
 from pdfminer3.converter import TextConverter
 import io
 import requests
+from login import LoginUI
+from hashlib import sha256
 
-# Set page config first
+# Set page configuration
 st.set_page_config(
     page_title="Smart Resume Analyzer",
     page_icon='📄',
     layout='wide'
 )
 
+# Initialize login system
+login_ui = LoginUI()
+
+# Initialize resume database
+def init_db():
+    """Initialize the database and create tables if they don't exist"""
+    conn = sqlite3.connect('resume_data.db')
+    c = conn.cursor()
+    
+    # Create user_data table if it doesn't exist
+    c.execute('''CREATE TABLE IF NOT EXISTS user_data
+                (ID TEXT PRIMARY KEY,
+                Name TEXT,
+                Email TEXT,
+                Resume_Score TEXT,
+                Timestamp TEXT,
+                Total_Page TEXT,
+                Predicted_Field TEXT,
+                User_Level TEXT,
+                Actual_Skills TEXT,
+                Recommended_Skills TEXT,
+                Recommended_Courses TEXT,
+                PDF_Name TEXT,
+                Original_Resume_Path TEXT)''')
+    
+    # Check if Original_Resume_Path column exists, if not add it
+    cursor = conn.execute('PRAGMA table_info(user_data)')
+    columns = [column[1] for column in cursor.fetchall()]
+    
+    if 'Original_Resume_Path' not in columns:
+        try:
+            c.execute('ALTER TABLE user_data ADD COLUMN Original_Resume_Path TEXT')
+            conn.commit()
+        except sqlite3.Error as e:
+            print(f"Error adding column: {e}")
+    
+    conn.commit()
+    conn.close()
+
 # Initialize session state
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-if 'user' not in st.session_state:
-    st.session_state.user = None
 if 'processed_files' not in st.session_state:
     st.session_state.processed_files = set()
 if 'current_file' not in st.session_state:
@@ -52,41 +93,6 @@ if 'resume_data' not in st.session_state:
     st.session_state.resume_data = None
 if 'resume_text' not in st.session_state:
     st.session_state.resume_text = None
-
-# Database functions
-def init_db():
-    conn = sqlite3.connect('users.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS users
-                 (username TEXT PRIMARY KEY, password TEXT, user_type TEXT)''')
-    conn.commit()
-    conn.close()
-
-def add_user(username, password, user_type):
-    conn = sqlite3.connect('users.db')
-    c = conn.cursor()
-    try:
-        hashed_pw = hashlib.sha256(password.encode()).hexdigest()
-        c.execute("INSERT INTO users VALUES (?, ?, ?)", (username, hashed_pw, user_type))
-        conn.commit()
-        return True
-    except sqlite3.IntegrityError:
-        return False
-    finally:
-        conn.close()
-
-def verify_user(username, password):
-    conn = sqlite3.connect('users.db')
-    c = conn.cursor()
-    c.execute("SELECT password, user_type FROM users WHERE username=?", (username,))
-    result = c.fetchone()
-    conn.close()
-    if result and result[0] == hashlib.sha256(password.encode()).hexdigest():
-        return True, result[1]
-    return False, None
-
-# Initialize database
-init_db()
 
 # Custom CSS for navbar
 st.markdown("""
@@ -107,18 +113,6 @@ st.markdown("""
         padding: 0.5rem 1rem;
         border-radius: 5px;
         background-color: rgba(255,255,255,0.1);
-    }
-    .auth-form {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        padding: 2rem;
-        border-radius: 10px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        z-index: 1000;
-        width: 300px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -143,44 +137,42 @@ def navbar():
             if st.button("Sign Up"):
                 st.session_state.show_signup = True
 
-# Authentication forms
-if 'show_signin' in st.session_state and st.session_state.show_signin:
-    with st.form("signin_form"):
-        st.subheader("Sign In")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        user_type = st.selectbox("User Type", ["Normal User", "Admin"])
-        submitted = st.form_submit_button("Sign In")
-        if submitted:
-            success, stored_type = verify_user(username, password)
-            if success and stored_type == user_type:
-                st.session_state.authenticated = True
-                st.session_state.user = {'username': username, 'user_type': user_type}
-                st.session_state.show_signin = False
-                st.experimental_rerun()
-            else:
-                st.error("Invalid credentials")
-
-if 'show_signup' in st.session_state and st.session_state.show_signup:
-    with st.form("signup_form"):
-        st.subheader("Sign Up")
-        new_username = st.text_input("Username")
-        new_password = st.text_input("Password", type="password")
-        confirm_password = st.text_input("Confirm Password", type="password")
-        user_type = st.selectbox("User Type", ["Normal User", "Admin"])
-        submitted = st.form_submit_button("Sign Up")
-        if submitted:
-            if new_password != confirm_password:
-                st.error("Passwords do not match")
-            elif not new_username or not new_password:
-                st.error("Please fill all fields")
-            else:
-                if add_user(new_username, new_password, user_type):
-                    st.success("Account created successfully!")
-                    st.session_state.show_signup = False
-                    st.experimental_rerun()
-                else:
-                    st.error("Username already exists")
+# Database functions
+def init_db():
+    """Initialize the database and create required tables if they don't exist."""
+    try:
+        conn = sqlite3.connect('resume_data.db', timeout=20)
+        cursor = conn.cursor()
+        
+        # Drop existing table if it exists
+        cursor.execute('DROP TABLE IF EXISTS user_data')
+        
+        # Create user_data table with correct structure
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_data (
+                ID TEXT PRIMARY KEY,
+                Name TEXT,
+                Email TEXT,
+                Resume_Score TEXT,
+                Timestamp TEXT,
+                Total_Page TEXT,
+                Predicted_Field TEXT,
+                User_Level TEXT,
+                Actual_Skills TEXT,
+                Recommended_Skills TEXT,
+                Recommended_Courses TEXT,
+                PDF_Name TEXT,
+                Original_Resume_Path TEXT
+            )
+        ''')
+        
+        conn.commit()
+        st.success("Database initialized successfully!")
+    except Exception as e:
+        st.error(f"Database initialization error: {str(e)}")
+    finally:
+        cursor.close()
+        conn.close()
 
 def extract_text_from_pdf(pdf_path):
     """Extract text from uploaded PDF file"""
@@ -226,52 +218,646 @@ def extract_text_from_pdf(pdf_path):
         st.error(f'Error processing PDF: {str(e)}')
         return None
 
+def download_resume(resume_data, applicant_name):
+    # Create a temporary file with the resume content
+    import tempfile
+    import os
+    
+    with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.txt') as tmp:
+        tmp.write(str(resume_data))
+        tmp_path = tmp.name
+    
+    # Read the file content for download
+    with open(tmp_path, 'rb') as file:
+        content = file.read()
+    
+    # Clean up the temporary file
+    os.unlink(tmp_path)
+    
+    return content
+
+def process_resume(uploaded_file):
+    try:
+        # Save the original file
+        file_path = os.path.join("Uploaded_Resumes", uploaded_file.name)
+        os.makedirs("Uploaded_Resumes", exist_ok=True)
+        
+        with open(file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+            
+        # Process the resume content
+        resume_text = extract_text_from_pdf(file_path)
+        if resume_text:
+            parser = CustomResumeParser(file_path)
+            resume_data = parser.get_extracted_data()
+            if resume_data:
+                resume_data['original_resume_path'] = file_path  # Store the path to original resume
+                return resume_data
+        return None
+    except Exception as e:
+        st.error(f'Error processing PDF: {str(e)}')
+        return None
+
 def main():
     """Main function for the Smart Resume Analyzer App"""
     st.markdown(get_custom_css(), unsafe_allow_html=True)
     
-    # Authentication handling
-    auth_ui = AuthUI()
+    # Initialize database
+    init_db()
     
-    if not st.session_state.authenticated:
-        auth_ui.render()
-        return
+    # Initialize login UI
+    login_ui = LoginUI()
     
-    # Main app UI after authentication
+    # Show header
     show_header()
     
-    user = st.session_state.user
-    st.write(f"Welcome {user['username']}!")
+    # Handle user authentication
+    if not login_ui.is_authenticated():
+        login_ui.render_login_ui()
+        return
     
-    # Display navbar
-    navbar()
+    # Get user type
+    user_type = login_ui.get_user_type()
     
-    # Sidebar user selection with modern design
-    st.sidebar.markdown("""
-        <div style="
-            background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        ">
-            <h2 style="
-                color: white;
-                margin: 0;
-                font-size: 20px;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            ">
-                <span>👤</span> Choose User Type
-            </h2>
+    # Show navigation bar with logout option
+    st.markdown("""
+        <div class="navbar">
+            <div style="color: white; margin-right: auto;">
+                Welcome, {} ({})
+            </div>
+            <a href="#" class="nav-item" id="logout-btn">Logout</a>
         </div>
-    """, unsafe_allow_html=True)
+    """.format(login_ui.get_username(), user_type.title()), unsafe_allow_html=True)
     
-    activities = ["Normal User", "Admin"]
-    choice = st.sidebar.selectbox("", activities)  # Removed label as it's in the header
+    if st.sidebar.button("Logout"):
+        login_ui.logout()
+        st.rerun()
 
-    if choice == 'Normal User':
+    # Show application status for normal users in sidebar
+    if user_type == "normal":
+        st.sidebar.markdown("### 📋 Your Applications")
+        applications = login_ui.get_user_applications(st.session_state.username, 'normal')
+        
+        if applications:
+            for company, date, status in applications:
+                status_color = {
+                    'pending': '🟡',
+                    'accepted': '🟢',
+                    'rejected': '🔴'
+                }.get(status.lower(), '⚪')
+                
+                st.sidebar.markdown(f"""
+                    <div style="
+                        background: white;
+                        padding: 10px;
+                        border-radius: 5px;
+                        margin-bottom: 10px;
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                    ">
+                        <div style="font-weight: bold; margin-bottom: 5px;">
+                            {company} {status_color}
+                        </div>
+                        <div style="color: #666; font-size: 0.9em;">
+                            Status: {status.title()}<br>
+                            Date: {date}
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.sidebar.info("No applications submitted yet")
+
+    if user_type == "admin":
+        st.markdown("""
+            <div style="
+                background: linear-gradient(120deg, #2b5876 0%, #4e4376 100%);
+                padding: 25px;
+                border-radius: 15px;
+                margin: 25px 0;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            ">
+                <h1 style="
+                    color: white;
+                    margin: 0 0 10px 0;
+                    font-size: 28px;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                ">
+                    <span>👔</span> Admin Dashboard
+                </h1>
+                <p style="
+                    color: rgba(255,255,255,0.9);
+                    margin: 0;
+                    font-size: 16px;
+                ">View and manage resume submissions and applications.</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Add choices for admin
+        choice = st.selectbox("Choose your task", ["View Applications", "Visual Analytics"])
+
+        if choice == "View Applications":
+            # Get applications for this admin
+            applications = login_ui.get_user_applications(st.session_state.username, 'admin')
+            
+            if applications:
+                # Convert to DataFrame for better display
+                applications_df = pd.DataFrame(
+                    applications,
+                    columns=['Applicant', 'Resume Data', 'Resume Score', 'Application Date', 'Status']
+                )
+                
+                # Summary statistics
+                st.markdown("### 📊 Summary Statistics")
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.markdown(f"""
+                        <div style="
+                            padding: 20px;
+                            background: white;
+                            border-radius: 10px;
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                            text-align: center;
+                        ">
+                            <div style="font-size: 32px; color: #2b5876; font-weight: bold;">
+                                {len(applications_df)}
+                            </div>
+                            <div style="color: #666;">Total Applications</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    avg_score = applications_df['Resume Score'].astype(float).mean()
+                    st.markdown(f"""
+                        <div style="
+                            padding: 20px;
+                            background: white;
+                            border-radius: 10px;
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                            text-align: center;
+                        ">
+                            <div style="font-size: 32px; color: #2b5876; font-weight: bold;">
+                                {avg_score:.1f}%
+                            </div>
+                            <div style="color: #666;">Average Score</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    pending_count = len(applications_df[applications_df['Status'] == 'pending'])
+                    st.markdown(f"""
+                        <div style="
+                            padding: 20px;
+                            background: white;
+                            border-radius: 10px;
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                            text-align: center;
+                        ">
+                            <div style="font-size: 32px; color: #2b5876; font-weight: bold;">
+                                {pending_count}
+                            </div>
+                            <div style="color: #666;">Pending Applications</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                
+                # Display applications
+                st.markdown("### 📝 Applications")
+                for index, row in applications_df.iterrows():
+                    with st.expander(f"Application from {row['Applicant']} - {row['Application Date']}"):
+                        st.markdown("""
+                        <style>
+                        .info-box {
+                            background-color: #f8f9fa;
+                            border-radius: 5px;
+                            padding: 15px;
+                            margin: 10px 0;
+                        }
+                        .info-title {
+                            color: #2b5876;
+                            font-weight: bold;
+                            margin-bottom: 5px;
+                        }
+                        </style>
+                        """, unsafe_allow_html=True)
+
+                        # Basic Information
+                        st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                        st.markdown('<p class="info-title">📋 Basic Information</p>', unsafe_allow_html=True)
+                        st.write(f"**Name:** {row['Applicant']}")
+                        
+                        # Parse resume data
+                        try:
+                            resume_data = eval(row['Resume Data'])
+                            email = resume_data.get('email', 'Not provided')
+                            mobile = resume_data.get('mobile_number', 'Not provided')
+                            skills = resume_data.get('skills', [])
+                            
+                            st.write(f"**Email:** {email}")
+                            st.write(f"**Mobile:** {mobile}")
+                        except:
+                            st.write("Error parsing resume data")
+                        st.markdown('</div>', unsafe_allow_html=True)
+
+                        # Skills and Score
+                        st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                        st.markdown('<p class="info-title">🎯 Skills & Score</p>', unsafe_allow_html=True)
+                        if 'skills' in locals():
+                            st.write("**Skills:**", ", ".join(skills) if skills else "No skills listed")
+                        st.write(f"**Resume Score:** {row['Resume Score']}%")
+                        st.write(f"**Current Status:** {row['Status'].title()}")
+                        st.markdown('</div>', unsafe_allow_html=True)
+
+                        # Download Resume Button
+                        st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                        st.markdown('<p class="info-title">📄 Resume</p>', unsafe_allow_html=True)
+                        
+                        try:
+                            # Get resume data and original file path
+                            resume_data = eval(row['Resume Data'])
+                            original_resume_path = resume_data.get('original_resume_path')
+                            
+                            if original_resume_path and os.path.exists(original_resume_path):
+                                with open(original_resume_path, 'rb') as file:
+                                    resume_content = file.read()
+                                    file_name = os.path.basename(original_resume_path)
+                                    
+                                st.download_button(
+                                    label="📥 Download Original Resume",
+                                    data=resume_content,
+                                    file_name=file_name,
+                                    mime="application/pdf",
+                                    help="Click to download the original resume",
+                                    key=f"download_{index}"
+                                )
+                            else:
+                                st.warning("Original resume file not available")
+                        except Exception as e:
+                            st.error(f"Error preparing resume download: {str(e)}")
+                            
+                        st.markdown('</div>', unsafe_allow_html=True)
+                        
+                        if row['Status'] == 'pending':
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                if st.button('Accept', key=f'accept_{index}'):
+                                    if login_ui.update_application_status(row['Applicant'], st.session_state.username, 'accepted'):
+                                        st.success('Application accepted!')
+                                        st.rerun()
+                            with col2:
+                                if st.button('Reject', key=f'reject_{index}'):
+                                    if login_ui.update_application_status(row['Applicant'], st.session_state.username, 'rejected'):
+                                        st.success('Application rejected!')
+                                        st.rerun()
+            else:
+                st.info("No applications received yet")
+
+        elif choice == "Visual Analytics":
+            # Get applications for analytics
+            applications = login_ui.get_user_applications(st.session_state.username, 'admin')
+            
+            if applications:
+                # Convert to DataFrame for analytics
+                applications_df = pd.DataFrame(
+                    applications,
+                    columns=['Applicant', 'Resume Data', 'Resume Score', 'Application Date', 'Status']
+                )
+                
+                st.markdown("### 📊 Application Analytics")
+                
+                # Create two columns for charts
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Application Status Distribution
+                    status_counts = applications_df['Status'].value_counts()
+                    
+                    # Create donut chart for application statuses
+                    fig = go.Figure(data=[go.Pie(
+                        labels=status_counts.index,
+                        values=status_counts.values,
+                        hole=0.5,
+                        marker=dict(colors=['#ff9999', '#66b3ff', '#99ff99'])
+                    )])
+                    
+                    fig.update_layout(
+                        title="Distribution of Application Statuses",
+                        showlegend=True,
+                        annotations=[dict(text='Status', x=0.5, y=0.5, font_size=20, showarrow=False)],
+                        width=400,
+                        height=400
+                    )
+                    
+                    st.plotly_chart(fig)
+                
+                with col2:
+                    # Resume Score Distribution
+                    fig = px.histogram(
+                        applications_df,
+                        x='Resume Score',
+                        nbins=10,
+                        title='Distribution of Resume Scores',
+                        color_discrete_sequence=['#2b5876']
+                    )
+                    
+                    fig.update_layout(
+                        xaxis_title="Resume Score (%)",
+                        yaxis_title="Number of Applications",
+                        showlegend=False,
+                        width=400,
+                        height=400
+                    )
+                    
+                    st.plotly_chart(fig)
+                
+                # Additional analytics
+                st.markdown("### 📈 Detailed Analytics")
+                
+                # Score statistics
+                score_stats = applications_df['Resume Score'].astype(float).describe()
+                
+                stats_cols = st.columns(4)
+                with stats_cols[0]:
+                    st.metric("Average Score", f"{score_stats['mean']:.1f}%")
+                with stats_cols[1]:
+                    st.metric("Median Score", f"{score_stats['50%']:.1f}%")
+                with stats_cols[2]:
+                    st.metric("Highest Score", f"{score_stats['max']:.1f}%")
+                with stats_cols[3]:
+                    st.metric("Lowest Score", f"{score_stats['min']:.1f}%")
+                
+                # Time series of applications
+                applications_df['Application Date'] = pd.to_datetime(applications_df['Application Date'])
+                daily_apps = applications_df.groupby('Application Date').size().reset_index(name='count')
+                
+                fig = px.line(
+                    daily_apps,
+                    x='Application Date',
+                    y='count',
+                    title='Applications Over Time',
+                    color_discrete_sequence=['#2b5876']
+                )
+                
+                fig.update_layout(
+                    xaxis_title="Date",
+                    yaxis_title="Number of Applications",
+                    showlegend=False
+                )
+                
+                st.plotly_chart(fig)
+                
+            else:
+                st.info("No applications data available for analysis")
+                
+        elif choice == "Uploaded Resumes":
+            st.write("#### Data Visualization")
+            
+            # Initialize database connection
+            connection = sqlite3.connect('users.db')
+            cursor = connection.cursor()
+            
+            ## Create the DB
+            cursor.execute('''CREATE TABLE IF NOT EXISTS Predictions
+                            (Name TEXT,
+                             Predicted_Field TEXT,
+                             Prediction_Probability NUMBER,
+                             Timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+                             ''')
+            connection.commit()
+            
+            ## Fetch data
+            cursor.execute('''SELECT COUNT(Predicted_Field) as Count, Predicted_Field 
+                            FROM Predictions
+                            GROUP BY Predicted_Field''')
+            data = cursor.fetchall()
+            
+            # Close the connection
+            cursor.close()
+            connection.close()
+            
+            if data:
+                field_counts = pd.DataFrame(data, columns=['Count', 'Category'])
+                
+                # Plot
+                fig = px.bar(field_counts, 
+                           x='Category',
+                           y='Count',
+                           title='Category Distribution in Uploaded Resumes')
+                st.plotly_chart(fig)
+            else:
+                st.info("No data to display yet")
+                
+        elif choice == "Prediction Results":
+            st.write("### 📊 Prediction Analysis")
+            
+            # Initialize database connection
+            conn = sqlite3.connect('resume_data.db')
+            cursor = conn.cursor()
+            
+            # Get prediction data
+            cursor.execute('''
+                SELECT Name, Predicted_Field, Resume_Score, Timestamp 
+                FROM user_data 
+                ORDER BY Timestamp DESC
+            ''')
+            predictions = cursor.fetchall()
+            conn.close()
+            
+            if predictions:
+                pred_df = pd.DataFrame(
+                    predictions,
+                    columns=['Name', 'Predicted Field', 'Resume Score', 'Submission Date']
+                )
+                
+                # Show predictions table
+                st.write("#### Recent Predictions")
+                st.dataframe(pred_df)
+                
+                # Visualization
+                st.write("#### Field Distribution")
+                field_counts = pred_df['Predicted Field'].value_counts()
+                fig = px.pie(
+                    values=field_counts.values,
+                    names=field_counts.index,
+                    title='Distribution of Predicted Fields',
+                    color_discrete_sequence=px.colors.sequential.Viridis
+                )
+                st.plotly_chart(fig)
+                
+                # Score Distribution
+                st.write("#### Score Distribution")
+                fig = px.histogram(
+                    pred_df,
+                    x='Resume Score',
+                    nbins=20,
+                    title='Distribution of Resume Scores',
+                    color_discrete_sequence=['#2b5876']
+                )
+                st.plotly_chart(fig)
+            else:
+                st.info("No prediction data available")
+                
+        elif choice == "Ranked Resumes":
+            st.write("### 🏆 Resume Rankings")
+            
+            # Initialize database connection
+            conn = sqlite3.connect('resume_data.db')
+            cursor = conn.cursor()
+            
+            # Get resume data with scores
+            cursor.execute('''
+                SELECT Name, Predicted_Field, Resume_Score, User_Level, Timestamp 
+                FROM user_data 
+                ORDER BY Resume_Score DESC
+            ''')
+            rankings = cursor.fetchall()
+            conn.close()
+            
+            if rankings:
+                rank_df = pd.DataFrame(
+                    rankings,
+                    columns=['Name', 'Field', 'Score', 'Experience Level', 'Submission Date']
+                )
+                
+                # Add rank column
+                rank_df['Rank'] = range(1, len(rank_df) + 1)
+                
+                # Reorder columns to show rank first
+                rank_df = rank_df[['Rank', 'Name', 'Field', 'Score', 'Experience Level', 'Submission Date']]
+                
+                # Show rankings
+                st.write("#### Top Resumes")
+                st.dataframe(rank_df)
+                
+                # Visualization
+                st.write("#### Score Distribution by Field")
+                fig = px.box(
+                    rank_df,
+                    x='Field',
+                    y='Score',
+                    title='Resume Scores by Field',
+                    color='Field',
+                    points='all'
+                )
+                st.plotly_chart(fig)
+                
+                # Experience Level Distribution
+                st.write("#### Experience Level Distribution")
+                level_counts = rank_df['Experience Level'].value_counts()
+                fig = px.pie(
+                    values=level_counts.values,
+                    names=level_counts.index,
+                    title='Distribution of Experience Levels',
+                    color_discrete_sequence=px.colors.sequential.Viridis
+                )
+                st.plotly_chart(fig)
+            else:
+                st.info("No ranking data available")
+                
+        elif choice == "Recommendations":
+            st.write("### 💡 Resume Improvement Recommendations")
+            
+            # Initialize database connection
+            conn = sqlite3.connect('resume_data.db')
+            cursor = conn.cursor()
+            
+            # Get resume data
+            cursor.execute('''
+                SELECT Name, Resume_Score, Actual_Skills, Recommended_Skills, 
+                       Recommended_Courses, User_Level 
+                FROM user_data 
+                ORDER BY Timestamp DESC
+            ''')
+            recommendations = cursor.fetchall()
+            conn.close()
+            
+            if recommendations:
+                for name, score, actual_skills, recommended_skills, courses, level in recommendations:
+                    with st.expander(f"Recommendations for {name} (Score: {score}%)"):
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.markdown("""
+                                <div style="
+                                    background: white;
+                                    padding: 20px;
+                                    border-radius: 10px;
+                                    margin-bottom: 10px;
+                                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                                ">
+                                    <h4 style="color: #2b5876; margin-bottom: 10px;">
+                                        🎯 Current Profile
+                                    </h4>
+                                    <p><strong>Experience Level:</strong> {}</p>
+                                    <p><strong>Current Skills:</strong></p>
+                                    {}
+                                </div>
+                            """.format(
+                                level,
+                                "<br>".join([f"• {skill.strip()}" for skill in eval(actual_skills)])
+                            ), unsafe_allow_html=True)
+                            
+                        with col2:
+                            st.markdown("""
+                                <div style="
+                                    background: white;
+                                    padding: 20px;
+                                    border-radius: 10px;
+                                    margin-bottom: 10px;
+                                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                                ">
+                                    <h4 style="color: #2b5876; margin-bottom: 10px;">
+                                        💪 Recommended Improvements
+                                    </h4>
+                                    <p><strong>Skills to Add:</strong></p>
+                                    {}
+                                </div>
+                            """.format(
+                                "<br>".join([f"• {skill.strip()}" for skill in eval(recommended_skills)])
+                            ), unsafe_allow_html=True)
+                        
+                        st.markdown("""
+                            <div style="
+                                background: white;
+                                padding: 20px;
+                                border-radius: 10px;
+                                margin-top: 10px;
+                                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                            ">
+                                <h4 style="color: #2b5876; margin-bottom: 10px;">
+                                    📚 Recommended Courses
+                                </h4>
+                                {}
+                            </div>
+                        """.format(
+                            "<br>".join([f"• {course.strip()}" for course in eval(courses)])
+                        ), unsafe_allow_html=True)
+            else:
+                st.info("No recommendation data available")
+                
+        else:
+            st.write("### About")
+            st.write("""
+            #### Smart Resume Analyzer
+            - Analyzes resumes and provides insights
+            - Uses ML for predictions
+            - Helps streamline recruitment
+            
+            #### Features
+            1. Resume Parsing
+            2. Skill Analysis
+            3. Category Prediction
+            4. Resume Score
+            5. Recommendations
+            
+            #### Technologies
+            - Python
+            - Streamlit
+            - Machine Learning
+            - NLP
+            """)
+
+    if user_type == "normal":
         st.markdown("""
             <div style="
                 background: linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%);
@@ -339,12 +925,7 @@ def main():
                     border-radius: 5px;
                     margin: 20px 0;
                 ">
-                    <div style="
-                        display: flex;
-                        align-items: center;
-                        gap: 10px;
-                        color: #2b5876;
-                    ">
+                    <div style="display: flex; align-items: center; gap: 10px; color: #2b5876;">
                         <span style="font-size: 24px;">👋</span>
                         <div>
                             <div style="font-weight: 500; margin-bottom: 5px;">Welcome!</div>
@@ -358,30 +939,93 @@ def main():
         # Process new file
         if pdf_file is not None and pdf_file.name not in st.session_state.processed_files:
             try:
-                # Create upload directory if it doesn't exist
-                os.makedirs(UPLOAD_DIR, exist_ok=True)
+                # Process the resume
+                resume_data = process_resume(pdf_file)
                 
-                # Save uploaded file to UPLOAD_DIR
-                save_path = os.path.join(UPLOAD_DIR, pdf_file.name)
-                with open(save_path, "wb") as f:
-                    f.write(pdf_file.getbuffer())
-
-                # Extract text from PDF using the saved file path
-                resume_text = extract_text_from_pdf(save_path)
-                
-                if resume_text:
-                    st.session_state.resume_text = resume_text
+                if resume_data:
+                    st.session_state.resume_text = extract_text_from_pdf(os.path.join("Uploaded_Resumes", pdf_file.name))
                     st.session_state.current_file = pdf_file.name
                     st.session_state.processed_files.add(pdf_file.name)
                     
-                    # Parse resume
-                    parser = CustomResumeParser(save_path)  # Pass the file path instead of text
-                    resume_data = parser.get_extracted_data()  # Use the correct method name
-                    st.session_state.resume_data = resume_data
+                    # Calculate predicted field based on skills
+                    skills = resume_data.get('skills', [])
+                    predicted_field = 'Unknown'
+                    if skills:
+                        tech_skills = ['python', 'java', 'javascript', 'react', 'sql', 'machine learning', 'aws', 'docker']
+                        data_skills = ['python', 'r', 'sql', 'machine learning', 'deep learning']
+                        if any(skill in tech_skills for skill in skills):
+                            predicted_field = 'Software Development'
+                        elif any(skill in data_skills for skill in skills):
+                            predicted_field = 'Data Science'
+
+                    # Determine experience level
+                    experience = resume_data.get('experience', [])
+                    exp_level = 'Entry Level'
+                    if experience and len(experience) > 2:
+                        exp_level = 'Senior Level'
+                    elif experience and len(experience) > 0:
+                        exp_level = 'Mid Level'
+
+                    # Calculate score
+                    scorer = ResumeScorer()
+                    score_details = scorer.score_resume(resume_data)
+                    total_score = round(
+                        score_details['experience_score'] * 0.35 +
+                        score_details['skills_score'] * 0.30 +
+                        score_details['education_score'] * 0.20 +
+                        score_details['completeness_score'] * 0.15
+                    )
                     
-                    st.success("Resume processed successfully!")
+                    # Generate recommended skills based on actual skills
+                    skills = resume_data.get('skills', [])
+                    skill_recommendations = {
+                        'python': ['django', 'flask', 'pandas', 'numpy', 'scikit-learn'],
+                        'java': ['spring', 'hibernate', 'maven', 'junit'],
+                        'javascript': ['react', 'angular', 'node.js', 'express'],
+                        'web': ['html5', 'css3', 'javascript', 'react', 'node.js'],
+                        'data': ['python', 'r', 'sql', 'tableau', 'power bi'],
+                        'machine learning': ['tensorflow', 'pytorch', 'scikit-learn', 'keras'],
+                        'cloud': ['aws', 'azure', 'docker', 'kubernetes'],
+                        'database': ['sql', 'mongodb', 'postgresql', 'mysql'],
+                        'mobile': ['react native', 'flutter', 'android', 'ios']
+                    }
+                    
+                    recommended_skills = set()
+                    for skill in skills:
+                        skill_lower = skill.lower()
+                        for category, related_skills in skill_recommendations.items():
+                            if category in skill_lower or skill_lower in category:
+                                recommended_skills.update(related_skills)
+                    
+                    # Remove skills that the candidate already has
+                    recommended_skills = list(recommended_skills - set(skill.lower() for skill in skills))
+                    
+                    # Prepare data for database
+                    user_data = {
+                        'Name': resume_data.get('name', 'Unknown'),
+                        'Email': resume_data.get('email', 'unknown@email.com'),
+                        'Resume_Score': total_score,
+                        'Total_Page': resume_data.get('no_of_pages', 0),
+                        'Predicted_Field': predicted_field,
+                        'User_Level': exp_level,
+                        'Actual_Skills': ', '.join(skills),
+                        'Recommended_Skills': ', '.join(recommended_skills[:5]),  # Top 5 recommendations
+                        'Recommended_Courses': ', '.join(score_details.get('recommended_courses', [])),
+                        'PDF_Name': pdf_file.name,
+                        'Original_Resume_Path': resume_data.get('original_resume_path')
+                    }
+                    
+                    # Save to database
+                    insert_user_data(user_data)
+                    
+                    # Store in session state for display
+                    st.session_state.resume_data = resume_data
+                    st.session_state.score_details = score_details
+                    
+                    st.success("Resume processed and saved successfully!")
                     st.rerun()
-                
+                else:
+                    st.error("Failed to extract data from resume")
             except Exception as e:
                 st.error(f"Error processing resume: {str(e)}")
                 return
@@ -632,9 +1276,9 @@ def main():
                 # Calculate resume score
                 resume_score = score_details['total_score']
                 
-                # Initialize database connection
-                connection = sqlite3.connect(DB_PATH + DB_FILE)
-                cursor = connection.cursor()
+                # Initialize database connection with timeout
+                conn = sqlite3.connect('resume_data.db', timeout=20)
+                cursor = conn.cursor()
                 
                 # Create table with all necessary columns
                 cursor.execute('''CREATE TABLE IF NOT EXISTS user_data
@@ -649,8 +1293,9 @@ def main():
                                 Actual_Skills TEXT,
                                 Recommended_Skills TEXT,
                                 Recommended_Courses TEXT,
-                                PDF_Name TEXT)''')
-                connection.commit()
+                                PDF_Name TEXT,
+                                Original_Resume_Path TEXT)''')
+                conn.commit()
                 
                 ## Insert into table
                 insert_data = (
@@ -665,21 +1310,29 @@ def main():
                     str(resume_data['skills']),
                     str(recommended_skills),
                     str(rec_course),
-                    pdf_file.name
+                    pdf_file.name,
+                    resume_data.get('original_resume_path')
                 )
                 
-                cursor.execute('''INSERT INTO user_data 
-                                (ID, Name, Email, Resume_Score, Timestamp, Total_Page,
-                                Predicted_Field, User_Level, Actual_Skills,
-                                Recommended_Skills, Recommended_Courses, PDF_Name)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', insert_data)
-                connection.commit()
-                connection.close()
+                try:
+                    cursor.execute('''INSERT INTO user_data 
+                                    (ID, Name, Email, Resume_Score, Timestamp, Total_Page,
+                                    Predicted_Field, User_Level, Actual_Skills,
+                                    Recommended_Skills, Recommended_Courses, PDF_Name,
+                                    Original_Resume_Path)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', insert_data)
+                    conn.commit()
+                except sqlite3.Error as e:
+                    st.error(f"Database error: {str(e)}")
+                
+                finally:
+                    cursor.close()
+                    conn.close()
 
                 ## Recommending courses
                 st.markdown("""
                     <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; margin-bottom: 10px;">
-                        <h2 style="color: #0e1117; margin-bottom: 15px;">🎓 Learning Path Recommendations</h2>
+                        <h2 style="color: #2b5876; margin-bottom: 10px;">🎓 Learning Path Recommendations</h2>
                     </div>
                 """, unsafe_allow_html=True)
                 
@@ -991,127 +1644,62 @@ def main():
                             </ol>
                         </div>
                     """, unsafe_allow_html=True)
-        else:
-            st.error('Something went wrong..')
-    else:
-        ## Admin Side with modern design
-        st.markdown("""
-            <div style="
-                background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
-                padding: 25px;
-                border-radius: 15px;
-                margin: 25px 0;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            ">
-                <h2 style="
-                    color: white;
-                    margin: 0 0 10px 0;
-                    font-size: 24px;
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                ">
-                    <span>👨‍💼</span> Admin Dashboard
-                </h2>
-                <p style="color: #e0e0e0; margin: 0;">Access administrative features and analytics</p>
-            </div>
-        """, unsafe_allow_html=True)
-
-        # Admin login with modern card design
-        st.markdown("""
-            <div style="
-                background: white;
-                padding: 25px;
-                border-radius: 12px;
-                box-shadow: 0 3px 12px rgba(0,0,0,0.07);
-                margin: 20px 0;
-            ">
-                <div style="
-                    color: #2b5876;
-                    font-weight: 500;
-                    margin-bottom: 20px;
-                    font-size: 18px;
-                ">🔐 Admin Login</div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        ad_user = st.text_input("Username")
-        ad_password = st.text_input("Password", type='password')
-        if st.button('Login'):
-            if ad_user == 'Admin' and ad_password == '9632':
-                st.success("Welcome Dear Admin")
-                # Display Data
-                connection = sqlite3.connect(DB_PATH + DB_FILE)
-                cursor = connection.cursor()
                 
-                # First, let's get the table structure
-                cursor.execute("PRAGMA table_info(user_data)")
-                columns = [column[1] for column in cursor.fetchall()]
+                # Apply to companies
+                st.markdown("""
+                    <div style="
+                        background: white;
+                        padding: 20px;
+                        border-radius: 10px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                        margin: 20px 0;
+                    ">
+                        <h3 style="color: #2b5876; margin-bottom: 15px;">Apply to Companies</h3>
+                    </div>
+                """, unsafe_allow_html=True)
                 
-                # Now get the data
-                cursor.execute('SELECT * FROM user_data')
-                data = cursor.fetchall()
-                st.header("**User's👨‍💻 Data**")
+                # Get list of admin users (companies)
+                companies = login_ui.get_admin_users()
                 
-                # Create DataFrame with actual columns from database
-                df = pd.DataFrame(data, columns=columns)
-                
-                # Rename columns for display if needed
-                column_mapping = {
-                    'Resume_Score': 'Resume Score',
-                    'Total_Page': 'Total Pages',
-                    'Predicted_Field': 'Predicted Field',
-                    'User_Level': 'User Level',
-                    'Actual_Skills': 'Actual Skills',
-                    'Recommended_Skills': 'Recommended Skills',
-                    'Recommended_Courses': 'Recommended Courses',
-                    'PDF_Name': 'PDF Name'
-                }
-                df = df.rename(columns=column_mapping)
-                st.dataframe(df)
-                st.markdown(get_table_download_link(df, 'User_Data.csv', 'Download Report'), unsafe_allow_html=True)
-                
-                ## Fetch data for plots
-                query = 'SELECT Predicted_Field, User_Level FROM user_data'
-                plot_data = pd.read_sql(query, connection)
-                
-                if not plot_data.empty:
-                    ## Pie chart for predicted field recommendations
-                    st.subheader("📈 **Predicted Field Distribution**")
+                if companies:
+                    selected_companies = st.multiselect(
+                        "Select companies to apply to:",
+                        companies,
+                        help="You can select multiple companies"
+                    )
                     
-                    field_counts = plot_data['Predicted_Field'].value_counts()
-                    field_df = pd.DataFrame({
-                        'Field': field_counts.index,
-                        'Count': field_counts.values
-                    })
-                    
-                    if not field_df.empty:
-                        fig = px.pie(field_df, values='Count', names='Field',
-                                   title='Distribution of Predicted Fields')
-                        st.plotly_chart(fig)
-                    else:
-                        st.info("No field data available for visualization")
-
-                    ### Pie chart for User's Experience Level
-                    st.subheader("📈 **Experience Level Distribution**")
-                    
-                    level_counts = plot_data['User_Level'].value_counts()
-                    level_df = pd.DataFrame({
-                        'Level': level_counts.index,
-                        'Count': level_counts.values
-                    })
-                    
-                    if not level_df.empty:
-                        fig = px.pie(level_df, values='Count', names='Level',
-                                   title='Distribution of Experience Levels')
-                        st.plotly_chart(fig)
-                    else:
-                        st.info("No experience level data available for visualization")
+                    if selected_companies:
+                        if st.button("Submit Applications"):
+                            success_count = 0
+                            for company in selected_companies:
+                                # Convert resume data to string for storage
+                                resume_data_str = str(resume_data)
+                                if login_ui.submit_application(
+                                    st.session_state.username,
+                                    company,
+                                    resume_data_str,
+                                    str(total_score)
+                                ):
+                                    success_count += 1
+                            
+                            if success_count > 0:
+                                st.success(f"Successfully submitted applications to {success_count} companies!")
+                            if success_count < len(selected_companies):
+                                st.warning("Some applications failed to submit. Please try again.")
                 else:
-                    st.info("No data available for visualization")
+                    st.info("No companies are currently registered in the system.")
                 
-                # Close database connection
-                connection.close()
-                
+                # Show user's application history
+                st.markdown("### Your Application History")
+                applications = login_ui.get_user_applications(st.session_state.username, 'normal')
+                if applications:
+                    application_df = pd.DataFrame(
+                        applications,
+                        columns=['Company', 'Application Date', 'Status']
+                    )
+                    st.dataframe(application_df)
+                else:
+                    st.info("You haven't submitted any applications yet.")
+            
 if __name__ == "__main__":
     main()
