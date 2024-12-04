@@ -4,8 +4,57 @@ import os
 import sqlite3
 import streamlit as st
 from constants import DB_PATH, DB_FILE
+from hashlib import sha256
 
 def get_db_path():
+    """Get the database path and ensure the directory exists"""
+    # Get the directory where the script is located
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    db_dir = os.path.join(base_dir, 'database')
+    
+    # Create the database directory if it doesn't exist
+    os.makedirs(db_dir, exist_ok=True)
+    
+    return os.path.join(db_dir, 'users.db')
+
+def init_db():
+    """Initialize the database with tables and default admin user"""
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+
+    # Create users table if it doesn't exist
+    c.execute('''CREATE TABLE IF NOT EXISTS users
+                (username TEXT PRIMARY KEY, 
+                 password TEXT NOT NULL,
+                 user_type TEXT NOT NULL)''')
+
+    # Create applications table if it doesn't exist
+    c.execute('''CREATE TABLE IF NOT EXISTS applications
+                (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 applicant_username TEXT NOT NULL,
+                 company_username TEXT NOT NULL,
+                 resume_data TEXT NOT NULL,
+                 resume_score TEXT,
+                 application_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                 status TEXT DEFAULT 'pending',
+                 FOREIGN KEY (applicant_username) REFERENCES users(username),
+                 FOREIGN KEY (company_username) REFERENCES users(username))''')
+
+    # Check if default admin exists
+    c.execute("SELECT username FROM users WHERE username=? AND user_type=?", ('admin', 'admin'))
+    if not c.fetchone():
+        # Create default admin user if it doesn't exist
+        default_password = 'admin123'  # You can change this default password
+        hashed_password = sha256(default_password.encode()).hexdigest()
+        c.execute("INSERT INTO users (username, password, user_type) VALUES (?, ?, ?)",
+                 ('admin', hashed_password, 'admin'))
+        st.info("Default admin account created. Username: admin, Password: admin123")
+
+    conn.commit()
+    conn.close()
+
+def get_resume_db_path():
     """Get the appropriate database path based on environment"""
     try:
         # For Streamlit Cloud, use the current directory
@@ -17,10 +66,10 @@ def get_db_path():
         st.error(f"Error determining database path: {e}")
         return DB_FILE  # Fallback to just the filename
 
-def init_db():
-    """Initialize the database with required tables."""
+def init_resume_db():
+    """Initialize the resume database with required tables."""
     try:
-        db_path = get_db_path()
+        db_path = get_resume_db_path()
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
@@ -63,9 +112,34 @@ def init_db():
 def insert_user_data(data):
     """Insert or update user data in the database."""
     try:
-        db_path = get_db_path()
+        db_path = get_resume_db_path()
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
+        
+        # First check if user_data table exists, if not create it
+        cursor.execute("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='user_data'
+        """)
+        if not cursor.fetchone():
+            # Create user_data table if it doesn't exist
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS user_data (
+                    ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Name TEXT,
+                    Email TEXT,
+                    Resume_Score REAL,
+                    Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    Total_Page INTEGER,
+                    Predicted_Field TEXT,
+                    User_Level TEXT,
+                    Actual_Skills TEXT,
+                    Recommended_Skills TEXT,
+                    Recommended_Courses TEXT,
+                    PDF_Name TEXT
+                )
+            ''')
+            conn.commit()
         
         # Ensure recommended skills is a string
         if 'Recommended_Skills' in data and isinstance(data['Recommended_Skills'], (list, set)):
@@ -139,7 +213,7 @@ def insert_user_data(data):
 def get_user_data():
     """Retrieve all user data from the database."""
     try:
-        db_path = get_db_path()
+        db_path = get_resume_db_path()
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
@@ -161,11 +235,18 @@ def delete_user(email):
     
     # Delete from resume_data.db
     try:
-        db_path = get_db_path()
+        db_path = get_resume_db_path()
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute('DELETE FROM user_data WHERE Email = ?', (email,))
-        conn.commit()
+        
+        # First check if the table exists
+        cursor.execute("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='user_data'
+        """)
+        if cursor.fetchone():
+            cursor.execute('DELETE FROM user_data WHERE Email = ?', (email,))
+            conn.commit()
     except Exception as e:
         st.error(f"Error deleting from resume database: {e}")
         success = False
@@ -175,11 +256,16 @@ def delete_user(email):
     
     # Delete from users.db
     try:
+        # Use direct path for users.db since it's in the root directory
         conn = sqlite3.connect('users.db')
         cursor = conn.cursor()
-        cursor.execute('DELETE FROM users WHERE username = ?', (email,))
-        # Also delete any applications
+
+        # Delete from applications table first (due to foreign key constraint)
         cursor.execute('DELETE FROM applications WHERE applicant_username = ?', (email,))
+        
+        # Then delete from users table
+        cursor.execute('DELETE FROM users WHERE username = ?', (email,))
+        
         conn.commit()
     except Exception as e:
         st.error(f"Error deleting from users database: {e}")

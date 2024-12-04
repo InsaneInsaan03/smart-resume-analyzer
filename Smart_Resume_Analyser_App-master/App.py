@@ -66,10 +66,10 @@ if 'user_type' not in st.session_state:
     st.session_state.user_type = None
 if 'username' not in st.session_state:
     st.session_state.username = None
-if 'current_page' not in st.session_state:
-    st.session_state.current_page = 'home'
-if 'processed_files' not in st.session_state:
-    st.session_state.processed_files = set()
+
+# Initialize session state for admin navigation
+if 'admin_view' not in st.session_state:
+    st.session_state.admin_view = 'dashboard'
 
 # Create necessary directories if they don't exist
 try:
@@ -123,6 +123,16 @@ def init_db():
     finally:
         if 'conn' in locals():
             conn.close()
+
+# Initialize session state
+if 'processed_files' not in st.session_state:
+    st.session_state.processed_files = set()
+if 'current_file' not in st.session_state:
+    st.session_state.current_file = None
+if 'resume_data' not in st.session_state:
+    st.session_state.resume_data = None
+if 'resume_text' not in st.session_state:
+    st.session_state.resume_text = None
 
 # Custom CSS for navbar
 st.markdown("""
@@ -288,19 +298,265 @@ def process_resume(uploaded_file):
         st.error(f'Error processing PDF: {str(e)}')
         return None
 
-def main():
-    # Initialize session state variables if they don't exist
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
-    if 'user_type' not in st.session_state:
-        st.session_state.user_type = None
-    if 'username' not in st.session_state:
-        st.session_state.username = None
-    if 'current_page' not in st.session_state:
-        st.session_state.current_page = 'home'
-    if 'processed_files' not in st.session_state:
-        st.session_state.processed_files = set()
+def display_applications():
+    """Display the applications view for admin."""
+    # Get applications for this admin
+    applications = login_ui.get_user_applications(st.session_state.username, 'admin')
+    
+    if applications:
+        # Convert to DataFrame for better display
+        applications_df = pd.DataFrame(
+            applications,
+            columns=['Applicant', 'Resume Data', 'Resume Score', 'Application Date', 'Status']
+        )
+        
+        # Summary statistics
+        st.markdown("### 📊 Summary Statistics")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown(f"""
+                <div style="
+                    padding: 20px;
+                    background: white;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    text-align: center;
+                ">
+                    <div style="font-size: 32px; color: #2b5876; font-weight: bold;">
+                        {len(applications_df)}
+                    </div>
+                    <div style="color: #666;">Total Applications</div>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            avg_score = applications_df['Resume Score'].astype(float).mean()
+            st.markdown(f"""
+                <div style="
+                    padding: 20px;
+                    background: white;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    text-align: center;
+                ">
+                    <div style="font-size: 32px; color: #2b5876; font-weight: bold;">
+                        {avg_score:.1f}%
+                    </div>
+                    <div style="color: #666;">Average Score</div>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            pending_count = len(applications_df[applications_df['Status'] == 'pending'])
+            st.markdown(f"""
+                <div style="
+                    padding: 20px;
+                    background: white;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    text-align: center;
+                ">
+                    <div style="font-size: 32px; color: #2b5876; font-weight: bold;">
+                        {pending_count}
+                    </div>
+                    <div style="color: #666;">Pending Applications</div>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        # Display applications
+        st.markdown("### 📝 Applications")
+        for index, row in applications_df.iterrows():
+            with st.expander(f"Application from {row['Applicant']} - {row['Application Date']}"):
+                st.markdown("""
+                <style>
+                .info-box {
+                    background-color: #f8f9fa;
+                    border-radius: 5px;
+                    padding: 15px;
+                    margin: 10px 0;
+                }
+                .info-title {
+                    color: #2b5876;
+                    font-weight: bold;
+                    margin-bottom: 5px;
+                }
+                </style>
+                """, unsafe_allow_html=True)
 
+                # Basic Information
+                st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                st.markdown('<p class="info-title">📋 Basic Information</p>', unsafe_allow_html=True)
+                st.write(f"**Name:** {row['Applicant']}")
+                
+                # Parse resume data
+                try:
+                    resume_data = eval(row['Resume Data'])
+                    email = resume_data.get('email', 'Not provided')
+                    mobile = resume_data.get('mobile_number', 'Not provided')
+                    skills = resume_data.get('skills', [])
+                    
+                    st.write(f"**Email:** {email}")
+                    st.write(f"**Mobile:** {mobile}")
+                except:
+                    st.write("Error parsing resume data")
+                st.markdown('</div>', unsafe_allow_html=True)
+
+                # Skills and Score
+                st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                st.markdown('<p class="info-title">🎯 Skills & Score</p>', unsafe_allow_html=True)
+                if 'skills' in locals():
+                    st.write("**Skills:**", ", ".join(skills) if skills else "No skills listed")
+                st.write(f"**Resume Score:** {row['Resume Score']}%")
+                st.write(f"**Current Status:** {row['Status'].title()}")
+                st.markdown('</div>', unsafe_allow_html=True)
+
+                # Download Resume Button
+                st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                st.markdown('<p class="info-title">📄 Resume</p>', unsafe_allow_html=True)
+                
+                try:
+                    # Get resume data and original file path
+                    resume_data = eval(row['Resume Data'])
+                    original_resume_path = resume_data.get('original_resume_path')
+                    
+                    if original_resume_path and os.path.exists(original_resume_path):
+                        with open(original_resume_path, 'rb') as file:
+                            resume_content = file.read()
+                            file_name = os.path.basename(original_resume_path)
+                            
+                        st.download_button(
+                            label="📥 Download Original Resume",
+                            data=resume_content,
+                            file_name=file_name,
+                            mime="application/pdf",
+                            help="Click to download the original resume",
+                            key=f"download_{index}"
+                        )
+                    else:
+                        st.warning("Original resume file not available")
+                except Exception as e:
+                    st.error(f"Error preparing resume download: {str(e)}")
+                    
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                if row['Status'] == 'pending':
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button('Accept', key=f'accept_{index}'):
+                            if login_ui.update_application_status(row['Applicant'], st.session_state.username, 'accepted'):
+                                st.success('Application accepted!')
+                                st.rerun()
+                    with col2:
+                        if st.button('Reject', key=f'reject_{index}'):
+                            if login_ui.update_application_status(row['Applicant'], st.session_state.username, 'rejected'):
+                                st.success('Application rejected!')
+                                st.rerun()
+    else:
+        st.info("No applications received yet")
+
+def display_visual_analytics():
+    """Display the visual analytics view for admin."""
+    # Get applications for analytics
+    applications = login_ui.get_user_applications(st.session_state.username, 'admin')
+    
+    if applications:
+        # Convert to DataFrame for analytics
+        applications_df = pd.DataFrame(
+            applications,
+            columns=['Applicant', 'Resume Data', 'Resume Score', 'Application Date', 'Status']
+        )
+        
+        st.markdown("### 📊 Application Analytics")
+        
+        # Create two columns for charts
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Application Status Distribution
+            status_counts = applications_df['Status'].value_counts()
+            
+            # Create donut chart for application statuses
+            fig = go.Figure(data=[go.Pie(
+                labels=status_counts.index,
+                values=status_counts.values,
+                hole=0.5,
+                marker=dict(colors=['#ff9999', '#66b3ff', '#99ff99'])
+            )])
+            
+            fig.update_layout(
+                title="Distribution of Application Statuses",
+                showlegend=True,
+                annotations=[dict(text='Status', x=0.5, y=0.5, font_size=20, showarrow=False)],
+                width=400,
+                height=400
+            )
+            
+            st.plotly_chart(fig)
+        
+        with col2:
+            # Resume Score Distribution
+            fig = px.histogram(
+                applications_df,
+                x='Resume Score',
+                nbins=10,
+                title='Distribution of Resume Scores',
+                color_discrete_sequence=['#2b5876']
+            )
+            
+            fig.update_layout(
+                xaxis_title="Resume Score (%)",
+                yaxis_title="Number of Applications",
+                showlegend=False,
+                width=400,
+                height=400
+            )
+            
+            st.plotly_chart(fig)
+        
+        # Additional analytics
+        st.markdown("### 📈 Detailed Analytics")
+        
+        # Score statistics
+        score_stats = applications_df['Resume Score'].astype(float).describe()
+        
+        stats_cols = st.columns(4)
+        with stats_cols[0]:
+            st.metric("Average Score", f"{score_stats['mean']:.1f}%")
+        with stats_cols[1]:
+            st.metric("Median Score", f"{score_stats['50%']:.1f}%")
+        with stats_cols[2]:
+            st.metric("Highest Score", f"{score_stats['max']:.1f}%")
+        with stats_cols[3]:
+            st.metric("Lowest Score", f"{score_stats['min']:.1f}%")
+        
+        # Time series of applications
+        applications_df['Application Date'] = pd.to_datetime(applications_df['Application Date'])
+        daily_apps = applications_df.groupby('Application Date').size().reset_index(name='count')
+        
+        fig = px.line(
+            daily_apps,
+            x='Application Date',
+            y='count',
+            title='Applications Over Time',
+            color_discrete_sequence=['#2b5876']
+        )
+        
+        fig.update_layout(
+            xaxis_title="Date",
+            yaxis_title="Number of Applications",
+            showlegend=False
+        )
+        
+        st.plotly_chart(fig)
+        
+    else:
+        st.info("No applications data available for analysis")
+
+def main():
+    """Main function for the Smart Resume Analyzer App"""
+    st.markdown(get_custom_css(), unsafe_allow_html=True)
+    
     # Initialize database
     init_db()
     
@@ -310,14 +566,25 @@ def main():
     # Show header
     show_header()
     
+    # Initialize session states for admin navigation
+    if 'admin_view' not in st.session_state:
+        st.session_state.admin_view = 'dashboard'
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    if 'user_type' not in st.session_state:
+        st.session_state.user_type = None
+    if 'show_delete_confirmation' not in st.session_state:
+        st.session_state.show_delete_confirmation = False
+    
     # Handle user authentication
     if not st.session_state.authenticated:
         login_ui.render_login_ui()
         return
-
-    # Get user type from session state
-    user_type = st.session_state.user_type or 'normal'
-    username = st.session_state.username or 'User'
+    
+    # Get user type and ensure it's not None
+    user_type = st.session_state.user_type
+    if user_type is None:
+        user_type = 'normal'  # Set a default value
     
     # Show navigation bar with logout option
     st.markdown("""
@@ -327,616 +594,104 @@ def main():
             </div>
             <a href="#" class="nav-item" id="logout-btn">Logout</a>
         </div>
-    """.format(username, user_type.title()), unsafe_allow_html=True)
-
-    # Sidebar navigation
-    st.sidebar.title("Navigation")
+    """.format(st.session_state.username or 'User', user_type.title()), unsafe_allow_html=True)
     
-    if user_type == 'admin':
-        # Admin navigation options
-        admin_pages = {
-            "Visual Analytics": "📊",
-            "View Applications": "📑",
-            "Manage Users": "👥"
-        }
-        
-        for page, icon in admin_pages.items():
-            if st.sidebar.button(f"{icon} {page}"):
-                st.session_state.current_page = page.lower().replace(" ", "_")
-                st.rerun()
-                
-        # Handle admin page navigation
-        if st.session_state.current_page == 'visual_analytics':
-            show_visual_analytics()
-        elif st.session_state.current_page == 'view_applications':
-            show_applications_admin()
-        elif st.session_state.current_page == 'manage_users':
-            show_user_management()
-    else:
-        # Normal user navigation options
-        user_pages = {
-            "Upload Resume": "📄",
-            "My Applications": "📋",
-            "Career Resources": "📚"
-        }
-        
-        for page, icon in user_pages.items():
-            if st.sidebar.button(f"{icon} {page}"):
-                st.session_state.current_page = page.lower().replace(" ", "_")
-                st.rerun()
-                
-        # Handle user page navigation
-        if st.session_state.current_page == 'upload_resume':
-            show_resume_upload()
-        elif st.session_state.current_page == 'my_applications':
-            show_user_applications()
-        elif st.session_state.current_page == 'career_resources':
-            show_career_resources()
-
-    # Logout button in sidebar
-    st.sidebar.markdown("---")
-    if st.sidebar.button("🚪 Logout"):
-        st.session_state.authenticated = False
-        st.session_state.user_type = None
-        st.session_state.username = None
-        st.session_state.current_page = 'home'
+    if st.sidebar.button("Logout"):
+        for key in st.session_state.keys():
+            del st.session_state[key]
         st.rerun()
 
-    # Account management section
+    # Add delete account section in sidebar
     st.sidebar.markdown("---")
     st.sidebar.markdown("### ⚠️ Account Management")
     
-    if st.sidebar.button("❌ Delete Account", type="secondary"):
-        if user_type == "admin":
-            if delete_admin(username):
-                st.session_state.authenticated = False
-                st.session_state.user_type = None
-                st.session_state.username = None
-                st.session_state.current_page = 'home'
-                st.success("Account deleted successfully!")
-                st.rerun()
-        else:
-            if delete_user(username):
-                st.session_state.authenticated = False
-                st.session_state.user_type = None
-                st.session_state.username = None
-                st.session_state.current_page = 'home'
-                st.success("Account deleted successfully!")
-                st.rerun()
-
-    # Rest of the code remains the same
-    if user_type == "admin":
-        st.markdown("""
-            <div style="
-                background: linear-gradient(120deg, #2b5876 0%, #4e4376 100%);
-                padding: 25px;
-                border-radius: 15px;
-                margin: 25px 0;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            ">
-                <h1 style="
-                    color: white;
-                    margin: 0 0 10px 0;
-                    font-size: 28px;
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                ">
-                    <span>👔</span> Admin Dashboard
-                </h1>
-                <p style="
-                    color: rgba(255,255,255,0.9);
-                    margin: 0;
-                    font-size: 16px;
-                ">View and manage resume submissions and applications.</p>
-            </div>
-        """, unsafe_allow_html=True)
-
-        # Add choices for admin
-        choice = st.selectbox("Choose your task", ["View Applications", "Visual Analytics"])
-
-        if choice == "View Applications":
-            # Get applications for this admin
-            applications = login_ui.get_user_applications(st.session_state.username, 'admin')
-            
-            if applications:
-                # Convert to DataFrame for better display
-                applications_df = pd.DataFrame(
-                    applications,
-                    columns=['Applicant', 'Resume Data', 'Resume Score', 'Application Date', 'Status']
-                )
-                
-                # Summary statistics
-                st.markdown("### 📊 Summary Statistics")
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.markdown(f"""
-                        <div style="
-                            padding: 20px;
-                            background: white;
-                            border-radius: 10px;
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                            text-align: center;
-                        ">
-                            <div style="font-size: 32px; color: #2b5876; font-weight: bold;">
-                                {len(applications_df)}
-                            </div>
-                            <div style="color: #666;">Total Applications</div>
-                        </div>
-                    """, unsafe_allow_html=True)
-                
-                with col2:
-                    avg_score = applications_df['Resume Score'].astype(float).mean()
-                    st.markdown(f"""
-                        <div style="
-                            padding: 20px;
-                            background: white;
-                            border-radius: 10px;
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                            text-align: center;
-                        ">
-                            <div style="font-size: 32px; color: #2b5876; font-weight: bold;">
-                                {avg_score:.1f}%
-                            </div>
-                            <div style="color: #666;">Average Score</div>
-                        </div>
-                    """, unsafe_allow_html=True)
-                
-                with col3:
-                    pending_count = len(applications_df[applications_df['Status'] == 'pending'])
-                    st.markdown(f"""
-                        <div style="
-                            padding: 20px;
-                            background: white;
-                            border-radius: 10px;
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                            text-align: center;
-                        ">
-                            <div style="font-size: 32px; color: #2b5876; font-weight: bold;">
-                                {pending_count}
-                            </div>
-                            <div style="color: #666;">Pending Applications</div>
-                        </div>
-                    """, unsafe_allow_html=True)
-                
-                # Display applications
-                st.markdown("### 📝 Applications")
-                for index, row in applications_df.iterrows():
-                    with st.expander(f"Application from {row['Applicant']} - {row['Application Date']}"):
-                        st.markdown("""
-                        <style>
-                        .info-box {
-                            background-color: #f8f9fa;
-                            border-radius: 5px;
-                            padding: 15px;
-                            margin: 10px 0;
-                        }
-                        .info-title {
-                            color: #2b5876;
-                            font-weight: bold;
-                            margin-bottom: 5px;
-                        }
-                        </style>
-                        """, unsafe_allow_html=True)
-
-                        # Basic Information
-                        st.markdown('<div class="info-box">', unsafe_allow_html=True)
-                        st.markdown('<p class="info-title">📋 Basic Information</p>', unsafe_allow_html=True)
-                        st.write(f"**Name:** {row['Applicant']}")
-                        
-                        # Parse resume data
-                        try:
-                            resume_data = eval(row['Resume Data'])
-                            email = resume_data.get('email', 'Not provided')
-                            mobile = resume_data.get('mobile_number', 'Not provided')
-                            skills = resume_data.get('skills', [])
-                            
-                            st.write(f"**Email:** {email}")
-                            st.write(f"**Mobile:** {mobile}")
-                        except:
-                            st.write("Error parsing resume data")
-                        st.markdown('</div>', unsafe_allow_html=True)
-
-                        # Skills and Score
-                        st.markdown('<div class="info-box">', unsafe_allow_html=True)
-                        st.markdown('<p class="info-title">🎯 Skills & Score</p>', unsafe_allow_html=True)
-                        if 'skills' in locals():
-                            st.write("**Skills:**", ", ".join(skills) if skills else "No skills listed")
-                        st.write(f"**Resume Score:** {row['Resume Score']}%")
-                        st.write(f"**Current Status:** {row['Status'].title()}")
-                        st.markdown('</div>', unsafe_allow_html=True)
-
-                        # Download Resume Button
-                        st.markdown('<div class="info-box">', unsafe_allow_html=True)
-                        st.markdown('<p class="info-title">📄 Resume</p>', unsafe_allow_html=True)
-                        
-                        try:
-                            # Get resume data and original file path
-                            resume_data = eval(row['Resume Data'])
-                            original_resume_path = resume_data.get('original_resume_path')
-                            
-                            if original_resume_path and os.path.exists(original_resume_path):
-                                with open(original_resume_path, 'rb') as file:
-                                    resume_content = file.read()
-                                    file_name = os.path.basename(original_resume_path)
-                                    
-                                st.download_button(
-                                    label="📥 Download Original Resume",
-                                    data=resume_content,
-                                    file_name=file_name,
-                                    mime="application/pdf",
-                                    help="Click to download the original resume",
-                                    key=f"download_{index}"
-                                )
-                            else:
-                                st.warning("Original resume file not available")
-                        except Exception as e:
-                            st.error(f"Error preparing resume download: {str(e)}")
-                            
-                        st.markdown('</div>', unsafe_allow_html=True)
-                        
-                        if row['Status'] == 'pending':
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                if st.button('Accept', key=f'accept_{index}'):
-                                    if login_ui.update_application_status(row['Applicant'], st.session_state.username, 'accepted'):
-                                        st.success('Application accepted!')
-                                        st.rerun()
-                            with col2:
-                                if st.button('Reject', key=f'reject_{index}'):
-                                    if login_ui.update_application_status(row['Applicant'], st.session_state.username, 'rejected'):
-                                        st.success('Application rejected!')
-                                        st.rerun()
+    # Create two columns for the delete button and confirmation
+    del_col1, del_col2 = st.sidebar.columns(2)
+    
+    if del_col1.button("Delete Account", type="secondary"):
+        st.session_state.show_delete_confirmation = True
+    
+    if st.session_state.show_delete_confirmation:
+        st.sidebar.warning("⚠️ This action cannot be undone!")
+        confirm_col1, confirm_col2 = st.sidebar.columns(2)
+        
+        if confirm_col1.button("Yes, Delete", type="primary", key="confirm_delete"):
+            if user_type == "admin":
+                if delete_admin(st.session_state.username):
+                    st.sidebar.success("Admin account deleted successfully!")
+                    for key in st.session_state.keys():
+                        del st.session_state[key]
+                    st.rerun()
             else:
-                st.info("No applications received yet")
+                if delete_user(st.session_state.username):
+                    st.sidebar.success("User account deleted successfully!")
+                    for key in st.session_state.keys():
+                        del st.session_state[key]
+                    st.rerun()
+        
+        if confirm_col2.button("Cancel", type="secondary", key="cancel_delete"):
+            st.session_state.show_delete_confirmation = False
 
-        elif choice == "Visual Analytics":
-            # Get applications for analytics
-            applications = login_ui.get_user_applications(st.session_state.username, 'admin')
-            
-            if applications:
-                # Convert to DataFrame for analytics
-                applications_df = pd.DataFrame(
-                    applications,
-                    columns=['Applicant', 'Resume Data', 'Resume Score', 'Application Date', 'Status']
-                )
-                
-                st.markdown("### 📊 Application Analytics")
-                
-                # Create two columns for charts
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    # Application Status Distribution
-                    status_counts = applications_df['Status'].value_counts()
-                    
-                    # Create donut chart for application statuses
-                    fig = go.Figure(data=[go.Pie(
-                        labels=status_counts.index,
-                        values=status_counts.values,
-                        hole=0.5,
-                        marker=dict(colors=['#ff9999', '#66b3ff', '#99ff99'])
-                    )])
-                    
-                    fig.update_layout(
-                        title="Distribution of Application Statuses",
-                        showlegend=True,
-                        annotations=[dict(text='Status', x=0.5, y=0.5, font_size=20, showarrow=False)],
-                        width=400,
-                        height=400
-                    )
-                    
-                    st.plotly_chart(fig)
-                
-                with col2:
-                    # Resume Score Distribution
-                    fig = px.histogram(
-                        applications_df,
-                        x='Resume Score',
-                        nbins=10,
-                        title='Distribution of Resume Scores',
-                        color_discrete_sequence=['#2b5876']
-                    )
-                    
-                    fig.update_layout(
-                        xaxis_title="Resume Score (%)",
-                        yaxis_title="Number of Applications",
-                        showlegend=False,
-                        width=400,
-                        height=400
-                    )
-                    
-                    st.plotly_chart(fig)
-                
-                # Additional analytics
-                st.markdown("### 📈 Detailed Analytics")
-                
-                # Score statistics
-                score_stats = applications_df['Resume Score'].astype(float).describe()
-                
-                stats_cols = st.columns(4)
-                with stats_cols[0]:
-                    st.metric("Average Score", f"{score_stats['mean']:.1f}%")
-                with stats_cols[1]:
-                    st.metric("Median Score", f"{score_stats['50%']:.1f}%")
-                with stats_cols[2]:
-                    st.metric("Highest Score", f"{score_stats['max']:.1f}%")
-                with stats_cols[3]:
-                    st.metric("Lowest Score", f"{score_stats['min']:.1f}%")
-                
-                # Time series of applications
-                applications_df['Application Date'] = pd.to_datetime(applications_df['Application Date'])
-                daily_apps = applications_df.groupby('Application Date').size().reset_index(name='count')
-                
-                fig = px.line(
-                    daily_apps,
-                    x='Application Date',
-                    y='count',
-                    title='Applications Over Time',
-                    color_discrete_sequence=['#2b5876']
-                )
-                
-                fig.update_layout(
-                    xaxis_title="Date",
-                    yaxis_title="Number of Applications",
-                    showlegend=False
-                )
-                
-                st.plotly_chart(fig)
-                
-            else:
-                st.info("No applications data available for analysis")
-                
-        elif choice == "Uploaded Resumes":
-            st.write("#### Data Visualization")
-            
-            # Initialize database connection
-            connection = sqlite3.connect('users.db')
-            cursor = connection.cursor()
-            
-            ## Create the DB
-            cursor.execute('''CREATE TABLE IF NOT EXISTS Predictions
-                            (Name TEXT,
-                             Predicted_Field TEXT,
-                             Prediction_Probability NUMBER,
-                             Timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
-                             ''')
-            connection.commit()
-            
-            ## Fetch data
-            cursor.execute('''SELECT COUNT(Predicted_Field) as Count, Predicted_Field 
-                            FROM Predictions
-                            GROUP BY Predicted_Field''')
-            data = cursor.fetchall()
-            
-            # Close the connection
-            cursor.close()
-            connection.close()
-            
-            if data:
-                field_counts = pd.DataFrame(data, columns=['Count', 'Category'])
-                
-                # Plot
-                fig = px.bar(field_counts, 
-                           x='Category',
-                           y='Count',
-                           title='Category Distribution in Uploaded Resumes')
-                st.plotly_chart(fig)
-            else:
-                st.info("No data to display yet")
-                
-        elif choice == "Prediction Results":
-            st.write("### 📊 Prediction Analysis")
-            
-            # Initialize database connection
-            conn = sqlite3.connect('resume_data.db')
-            cursor = conn.cursor()
-            
-            # Get prediction data
-            cursor.execute('''
-                SELECT Name, Predicted_Field, Resume_Score, Timestamp 
-                FROM user_data 
-                ORDER BY Timestamp DESC
-            ''')
-            predictions = cursor.fetchall()
-            conn.close()
-            
-            if predictions:
-                pred_df = pd.DataFrame(
-                    predictions,
-                    columns=['Name', 'Predicted Field', 'Resume Score', 'Submission Date']
-                )
-                
-                # Show predictions table
-                st.write("#### Recent Predictions")
-                st.dataframe(pred_df)
-                
-                # Visualization
-                st.write("#### Field Distribution")
-                field_counts = pred_df['Predicted Field'].value_counts()
-                fig = px.pie(
-                    values=field_counts.values,
-                    names=field_counts.index,
-                    title='Distribution of Predicted Fields',
-                    color_discrete_sequence=px.colors.sequential.Viridis
-                )
-                st.plotly_chart(fig)
-                
-                # Score Distribution
-                st.write("#### Score Distribution")
-                fig = px.histogram(
-                    pred_df,
-                    x='Resume Score',
-                    nbins=20,
-                    title='Distribution of Resume Scores',
-                    color_discrete_sequence=['#2b5876']
-                )
-                st.plotly_chart(fig)
-            else:
-                st.info("No prediction data available")
-                
-        elif choice == "Ranked Resumes":
-            st.write("### 🏆 Resume Rankings")
-            
-            # Initialize database connection
-            conn = sqlite3.connect('resume_data.db')
-            cursor = conn.cursor()
-            
-            # Get resume data with scores
-            cursor.execute('''
-                SELECT Name, Predicted_Field, Resume_Score, User_Level, Timestamp 
-                FROM user_data 
-                ORDER BY Resume_Score DESC
-            ''')
-            rankings = cursor.fetchall()
-            conn.close()
-            
-            if rankings:
-                rank_df = pd.DataFrame(
-                    rankings,
-                    columns=['Name', 'Field', 'Score', 'Experience Level', 'Submission Date']
-                )
-                
-                # Add rank column
-                rank_df['Rank'] = range(1, len(rank_df) + 1)
-                
-                # Reorder columns to show rank first
-                rank_df = rank_df[['Rank', 'Name', 'Field', 'Score', 'Experience Level', 'Submission Date']]
-                
-                # Show rankings
-                st.write("#### Top Resumes")
-                st.dataframe(rank_df)
-                
-                # Visualization
-                st.write("#### Score Distribution by Field")
-                fig = px.box(
-                    rank_df,
-                    x='Field',
-                    y='Score',
-                    title='Resume Scores by Field',
-                    color='Field',
-                    points='all'
-                )
-                st.plotly_chart(fig)
-                
-                # Experience Level Distribution
-                st.write("#### Experience Level Distribution")
-                level_counts = rank_df['Experience Level'].value_counts()
-                fig = px.pie(
-                    values=level_counts.values,
-                    names=level_counts.index,
-                    title='Distribution of Experience Levels',
-                    color_discrete_sequence=px.colors.sequential.Viridis
-                )
-                st.plotly_chart(fig)
-            else:
-                st.info("No ranking data available")
-                
-        elif choice == "Recommendations":
-            st.write("### 💡 Resume Improvement Recommendations")
-            
-            # Initialize database connection
-            conn = sqlite3.connect('resume_data.db')
-            cursor = conn.cursor()
-            
-            # Get resume data
-            cursor.execute('''
-                SELECT Name, Resume_Score, Actual_Skills, Recommended_Skills, 
-                       Recommended_Courses, User_Level 
-                FROM user_data 
-                ORDER BY Timestamp DESC
-            ''')
-            recommendations = cursor.fetchall()
-            conn.close()
-            
-            if recommendations:
-                for name, score, actual_skills, recommended_skills, courses, level in recommendations:
-                    with st.expander(f"Recommendations for {name} (Score: {score}%)"):
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            st.markdown("""
-                                <div style="
-                                    background: white;
-                                    padding: 20px;
-                                    border-radius: 10px;
-                                    margin-bottom: 10px;
-                                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-                                ">
-                                    <h4 style="color: #2b5876; margin-bottom: 10px;">
-                                        🎯 Current Profile
-                                    </h4>
-                                    <p><strong>Experience Level:</strong> {}</p>
-                                    <p><strong>Current Skills:</strong></p>
-                                    {}
-                                </div>
-                            """.format(
-                                level,
-                                "<br>".join([f"• {skill.strip()}" for skill in eval(actual_skills)])
-                            ), unsafe_allow_html=True)
-                            
-                        with col2:
-                            st.markdown("""
-                                <div style="
-                                    background: white;
-                                    padding: 20px;
-                                    border-radius: 10px;
-                                    margin-bottom: 10px;
-                                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-                                ">
-                                    <h4 style="color: #2b5876; margin-bottom: 10px;">
-                                        💪 Recommended Improvements
-                                    </h4>
-                                    <p><strong>Skills to Add:</strong></p>
-                                    {}
-                                </div>
-                            """.format(
-                                "<br>".join([f"• {skill.strip()}" for skill in eval(recommended_skills)])
-                            ), unsafe_allow_html=True)
-                        
-                        st.markdown("""
-                            <div style="
-                                background: white;
-                                padding: 20px;
-                                border-radius: 10px;
-                                margin-top: 10px;
-                                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-                            ">
-                                <h4 style="color: #2b5876; margin-bottom: 10px;">
-                                    📚 Recommended Courses
-                                </h4>
-                                {}
-                            </div>
-                        """.format(
-                            "<br>".join([f"• {course.strip()}" for course in eval(courses)])
-                        ), unsafe_allow_html=True)
-            else:
-                st.info("No recommendation data available")
-                
-        else:
-            st.write("### About")
-            st.write("""
-            #### Smart Resume Analyzer
-            - Analyzes resumes and provides insights
-            - Uses ML for predictions
-            - Helps streamline recruitment
-            
-            #### Features
-            1. Resume Parsing
-            2. Skill Analysis
-            3. Category Prediction
-            4. Resume Score
-            5. Recommendations
-            
-            #### Technologies
-            - Python
-            - Streamlit
-            - Machine Learning
-            - NLP
-            """)
-
+    # Show application status for normal users in sidebar
     if user_type == "normal":
+        st.sidebar.markdown("### 📋 Your Applications")
+        applications = login_ui.get_user_applications(st.session_state.username, 'normal')
+        
+        if applications:
+            for company, date, status in applications:
+                status_color = {
+                    'pending': '🟡',
+                    'accepted': '🟢',
+                    'rejected': '🔴'
+                }.get(status.lower(), '⚪')
+                
+                st.sidebar.markdown(f"""
+                    <div style="
+                        background: white;
+                        padding: 10px;
+                        border-radius: 5px;
+                        margin-bottom: 10px;
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                    ">
+                        <div style="font-weight: bold; margin-bottom: 5px;">
+                            {company} {status_color}
+                        </div>
+                        <div style="color: #666; font-size: 0.9em;">
+                            Status: {status.title()}<br>
+                            Date: {date}
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.sidebar.info("No applications submitted yet")
+
+    # Admin Interface
+    if user_type == "admin":
+        st.sidebar.markdown("### Admin Navigation")
+        
+        # Admin navigation buttons
+        if st.sidebar.button("📊 Dashboard", key="nav_dashboard"):
+            st.session_state.admin_view = 'dashboard'
+            
+        if st.sidebar.button("📈 Visual Analytics", key="nav_analytics"):
+            st.session_state.admin_view = 'analytics'
+            
+        if st.sidebar.button("📑 Applications", key="nav_applications"):
+            st.session_state.admin_view = 'applications'
+        
+        # Display the appropriate view based on session state
+        if st.session_state.admin_view == 'dashboard':
+            st.markdown("## 📊 Admin Dashboard")
+            display_applications()
+        elif st.session_state.admin_view == 'analytics':
+            st.markdown("## 📈 Visual Analytics")
+            display_visual_analytics()
+        elif st.session_state.admin_view == 'applications':
+            st.markdown("## 📑 Applications Management")
+            display_applications()
+    
+    # Normal user interface
+    else:
         st.markdown("""
             <div style="
                 background: linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%);
@@ -1361,12 +1116,12 @@ def main():
                 
                 # Create table with all necessary columns
                 cursor.execute('''CREATE TABLE IF NOT EXISTS user_data
-                                (ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                                (ID TEXT PRIMARY KEY,
                                 Name TEXT,
                                 Email TEXT,
-                                Resume_Score INTEGER,
-                                Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                                Total_Page INTEGER,
+                                Resume_Score TEXT,
+                                Timestamp TEXT,
+                                Total_Page TEXT,
                                 Predicted_Field TEXT,
                                 User_Level TEXT,
                                 Actual_Skills TEXT,

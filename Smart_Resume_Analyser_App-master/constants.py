@@ -1,11 +1,26 @@
 """Constants used throughout the application."""
 
-# Database configuration
-DB_PATH = "database/"  # Database directory
-DB_FILE = "user_data.db"  # Database file name
+import os
 
-# File upload configuration
-UPLOAD_DIR = "Uploaded_Resumes/"  # Upload directory for resumes
+# Directory paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_DIR = os.path.join(BASE_DIR, 'Uploaded_Resumes')
+DATABASE_DIR = os.path.join(BASE_DIR, 'database')
+
+# Ensure directories exist
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(DATABASE_DIR, exist_ok=True)
+
+# Database paths
+DB_PATH = DATABASE_DIR
+DB_FILE = os.path.join(DATABASE_DIR, 'resume_data.db')
+USERS_DB = os.path.join(DATABASE_DIR, 'users.db')
+
+# Create .gitkeep file to preserve the database directory
+gitkeep_file = os.path.join(DATABASE_DIR, '.gitkeep')
+if not os.path.exists(gitkeep_file):
+    with open(gitkeep_file, 'w') as f:
+        pass
 
 # Database schema
 USER_TABLE_SCHEMA = '''CREATE TABLE IF NOT EXISTS user_data
@@ -24,8 +39,8 @@ USER_TABLE_SCHEMA = '''CREATE TABLE IF NOT EXISTS user_data
 
 # Styling constants
 TYPING_MESSAGES = [
-    "Unlock Your Career Potential 🚀",
-    "Get Smart Resume Analysis 📊",
-    "Discover Your Perfect Career Path 🎯",
-    "Enhance Your Professional Journey 💼"
+    "Unlock Your Career Potential ",
+    "Get Smart Resume Analysis ",
+    "Discover Your Perfect Career Path ",
+    "Enhance Your Professional Journey "
 ]
