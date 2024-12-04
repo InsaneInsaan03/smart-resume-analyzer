@@ -66,6 +66,10 @@ if 'user_type' not in st.session_state:
     st.session_state.user_type = None
 if 'username' not in st.session_state:
     st.session_state.username = None
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = 'home'
+if 'processed_files' not in st.session_state:
+    st.session_state.processed_files = set()
 
 # Create necessary directories if they don't exist
 try:
@@ -119,16 +123,6 @@ def init_db():
     finally:
         if 'conn' in locals():
             conn.close()
-
-# Initialize session state
-if 'processed_files' not in st.session_state:
-    st.session_state.processed_files = set()
-if 'current_file' not in st.session_state:
-    st.session_state.current_file = None
-if 'resume_data' not in st.session_state:
-    st.session_state.resume_data = None
-if 'resume_text' not in st.session_state:
-    st.session_state.resume_text = None
 
 # Custom CSS for navbar
 st.markdown("""
@@ -295,9 +289,18 @@ def process_resume(uploaded_file):
         return None
 
 def main():
-    """Main function for the Smart Resume Analyzer App"""
-    st.markdown(get_custom_css(), unsafe_allow_html=True)
-    
+    # Initialize session state variables if they don't exist
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    if 'user_type' not in st.session_state:
+        st.session_state.user_type = None
+    if 'username' not in st.session_state:
+        st.session_state.username = None
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = 'home'
+    if 'processed_files' not in st.session_state:
+        st.session_state.processed_files = set()
+
     # Initialize database
     init_db()
     
@@ -308,14 +311,13 @@ def main():
     show_header()
     
     # Handle user authentication
-    if not login_ui.is_authenticated():
+    if not st.session_state.authenticated:
         login_ui.render_login_ui()
         return
-    
-    # Get user type and ensure it's not None
-    user_type = login_ui.get_user_type()
-    if user_type is None:
-        user_type = 'normal'  # Set a default value
+
+    # Get user type from session state
+    user_type = st.session_state.user_type or 'normal'
+    username = st.session_state.username or 'User'
     
     # Show navigation bar with logout option
     st.markdown("""
@@ -325,77 +327,84 @@ def main():
             </div>
             <a href="#" class="nav-item" id="logout-btn">Logout</a>
         </div>
-    """.format(login_ui.get_username() or 'User', user_type.title()), unsafe_allow_html=True)
+    """.format(username, user_type.title()), unsafe_allow_html=True)
+
+    # Sidebar navigation
+    st.sidebar.title("Navigation")
     
-    if st.sidebar.button("Logout"):
-        login_ui.logout()
+    if user_type == 'admin':
+        # Admin navigation options
+        admin_pages = {
+            "Visual Analytics": "📊",
+            "View Applications": "📑",
+            "Manage Users": "👥"
+        }
+        
+        for page, icon in admin_pages.items():
+            if st.sidebar.button(f"{icon} {page}"):
+                st.session_state.current_page = page.lower().replace(" ", "_")
+                st.rerun()
+                
+        # Handle admin page navigation
+        if st.session_state.current_page == 'visual_analytics':
+            show_visual_analytics()
+        elif st.session_state.current_page == 'view_applications':
+            show_applications_admin()
+        elif st.session_state.current_page == 'manage_users':
+            show_user_management()
+    else:
+        # Normal user navigation options
+        user_pages = {
+            "Upload Resume": "📄",
+            "My Applications": "📋",
+            "Career Resources": "📚"
+        }
+        
+        for page, icon in user_pages.items():
+            if st.sidebar.button(f"{icon} {page}"):
+                st.session_state.current_page = page.lower().replace(" ", "_")
+                st.rerun()
+                
+        # Handle user page navigation
+        if st.session_state.current_page == 'upload_resume':
+            show_resume_upload()
+        elif st.session_state.current_page == 'my_applications':
+            show_user_applications()
+        elif st.session_state.current_page == 'career_resources':
+            show_career_resources()
+
+    # Logout button in sidebar
+    st.sidebar.markdown("---")
+    if st.sidebar.button("🚪 Logout"):
+        st.session_state.authenticated = False
+        st.session_state.user_type = None
+        st.session_state.username = None
+        st.session_state.current_page = 'home'
         st.rerun()
 
-    # Add delete account section in sidebar
+    # Account management section
     st.sidebar.markdown("---")
     st.sidebar.markdown("### ⚠️ Account Management")
     
-    # Create two columns for the delete button and confirmation
-    del_col1, del_col2 = st.sidebar.columns(2)
-    
-    if "show_delete_confirmation" not in st.session_state:
-        st.session_state.show_delete_confirmation = False
-    
-    if del_col1.button("Delete Account", type="secondary"):
-        st.session_state.show_delete_confirmation = True
-    
-    if st.session_state.show_delete_confirmation:
-        st.sidebar.warning("⚠️ This action cannot be undone!")
-        confirm_col1, confirm_col2 = st.sidebar.columns(2)
-        
-        if confirm_col1.button("Yes, Delete", type="primary", key="confirm_delete"):
-            if user_type == "admin":
-                if delete_admin(st.session_state.username):
-                    st.sidebar.success("Admin account deleted successfully!")
-                    login_ui.logout()
-                    st.rerun()
-            else:
-                if delete_user(st.session_state.username):
-                    st.sidebar.success("User account deleted successfully!")
-                    login_ui.logout()
-                    st.rerun()
-        
-        if confirm_col2.button("Cancel", type="secondary", key="cancel_delete"):
-            st.session_state.show_delete_confirmation = False
-
-    # Show application status for normal users in sidebar
-    if user_type == "normal":
-        st.sidebar.markdown("### 📋 Your Applications")
-        applications = login_ui.get_user_applications(st.session_state.username, 'normal')
-        
-        if applications:
-            for company, date, status in applications:
-                status_color = {
-                    'pending': '🟡',
-                    'accepted': '🟢',
-                    'rejected': '🔴'
-                }.get(status.lower(), '⚪')
-                
-                st.sidebar.markdown(f"""
-                    <div style="
-                        background: white;
-                        padding: 10px;
-                        border-radius: 5px;
-                        margin-bottom: 10px;
-                        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-                    ">
-                        <div style="font-weight: bold; margin-bottom: 5px;">
-                            {company} {status_color}
-                        </div>
-                        <div style="color: #666; font-size: 0.9em;">
-                            Status: {status.title()}<br>
-                            Date: {date}
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
+    if st.sidebar.button("❌ Delete Account", type="secondary"):
+        if user_type == "admin":
+            if delete_admin(username):
+                st.session_state.authenticated = False
+                st.session_state.user_type = None
+                st.session_state.username = None
+                st.session_state.current_page = 'home'
+                st.success("Account deleted successfully!")
+                st.rerun()
         else:
-            st.sidebar.info("No applications submitted yet")
+            if delete_user(username):
+                st.session_state.authenticated = False
+                st.session_state.user_type = None
+                st.session_state.username = None
+                st.session_state.current_page = 'home'
+                st.success("Account deleted successfully!")
+                st.rerun()
 
+    # Rest of the code remains the same
     if user_type == "admin":
         st.markdown("""
             <div style="
