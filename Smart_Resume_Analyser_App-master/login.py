@@ -1,6 +1,7 @@
 import streamlit as st
 import sqlite3
 from hashlib import sha256
+import streamlit.components.v1 as components
 
 class LoginUI:
     def __init__(self):
@@ -61,31 +62,25 @@ class LoginUI:
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
         try:
-            # Debug information
-            st.write("Checking credentials for:", username)
-            st.write("User type:", user_type)
-            
             # Get user data
             c.execute("SELECT password, user_type FROM users WHERE username=?", 
                      (username,))
             result = c.fetchone()
             
             if not result:
-                st.write("User not found in database")
                 return False
                 
             stored_password, stored_user_type = result
             input_password_hash = sha256(password.encode()).hexdigest()
             
-            # Debug password match
-            st.write("Stored user type:", stored_user_type)
-            password_match = stored_password == input_password_hash
-            type_match = stored_user_type == user_type
-            
-            st.write("Password match:", password_match)
-            st.write("User type match:", type_match)
-            
-            return password_match and type_match
+            # Verify credentials
+            if stored_password == input_password_hash and stored_user_type == user_type:
+                # Set session state
+                st.session_state.authenticated = True
+                st.session_state.user_type = stored_user_type
+                st.session_state.username = username
+                return True
+            return False
         except Exception as e:
             st.error(f"Database error: {str(e)}")
             return False
@@ -96,50 +91,122 @@ class LoginUI:
         st.markdown("""
         <style>
         .login-container {
-            max-width: 400px;
+            max-width: 500px;
             margin: 0 auto;
-            padding: 20px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            background: linear-gradient(135deg, #ffffff 0%, #f5f7fa 100%);
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
         }
         .login-header {
             text-align: center;
-            color: #2b5876;
-            margin-bottom: 20px;
+            background: linear-gradient(45deg, #2b5876 0%, #4e4376 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 30px;
         }
         .stButton>button {
             width: 100%;
-            margin-top: 10px;
-            background-color: #2b5876;
+            padding: 12px 0;
+            margin: 8px 0;
+            border: none;
+            border-radius: 25px;
+            background: linear-gradient(45deg, #2b5876 0%, #4e4376 100%);
             color: white;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        .stButton>button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+        /* Fix for input fields */
+        .stTextInput>div>div>input {
+            border-radius: 10px !important;
+            padding: 15px 20px !important;
+            border: 1px solid #e0e0e0 !important;
+            transition: all 0.3s ease !important;
+            background-color: white !important;
+            color: #333 !important;
+            outline: none !important;
+        }
+        .stTextInput>div>div>input:focus {
+            border-color: #2b5876 !important;
+            box-shadow: 0 0 0 1px #2b5876 !important;
+            outline: none !important;
+        }
+        .stTextInput>div>div>input:hover {
+            border-color: #2b5876 !important;
+        }
+        /* Remove any red outlines */
+        .stTextInput>div {
+            border: none !important;
+            outline: none !important;
+        }
+        .stTextInput>div:focus-within {
+            box-shadow: none !important;
+            outline: none !important;
         }
         .signup-text {
             text-align: center;
+            margin-top: 20px;
+            font-size: 15px;
+            color: #666;
+        }
+        .form-container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin-top: 20px;
+        }
+        .stSelectbox>div>div {
+            border-radius: 10px !important;
+        }
+        /* Style for form labels */
+        .stMarkdown h5 {
+            color: #2b5876;
+            margin-bottom: 5px;
             margin-top: 15px;
-            font-size: 14px;
         }
         </style>
         """, unsafe_allow_html=True)
 
-        st.markdown("<h1 class='login-header'>Smart Resume Analyzer</h1>", 
-                   unsafe_allow_html=True)
+        # Add custom icons and header
+        st.markdown("""
+        <div style='text-align: center; margin-bottom: 30px;'>
+            <svg width="50" height="50" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="url(#grad1)"/>
+                <defs>
+                    <linearGradient id="grad1" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" style="stop-color:#2b5876"/>
+                        <stop offset="100%" style="stop-color:#4e4376"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+        </div>
+        <h1 class='login-header'>Smart Resume Analyzer</h1>
+        """, unsafe_allow_html=True)
 
-        # Create three columns for the buttons
+        # Create container for buttons
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            if st.button("Normal User Login"):
+            if st.button("👤 User Login"):
                 st.session_state.show_login = "normal"
                 st.session_state.show_signup = False
         
         with col2:
-            if st.button("Admin Login"):
+            if st.button("🏢 Admin Login"):
                 st.session_state.show_login = "admin"
                 st.session_state.show_signup = False
         
         with col3:
-            if st.button("Sign Up"):
+            if st.button("✨ Sign Up"):
                 st.session_state.show_signup = True
                 st.session_state.show_login = None
 
@@ -147,48 +214,58 @@ class LoginUI:
         if hasattr(st.session_state, 'show_login') and st.session_state.show_login:
             user_type = st.session_state.show_login
             with st.form(f"{user_type}_login_form"):
-                st.subheader(f"{user_type.title()} Login")
-                username = st.text_input("Username")
-                password = st.text_input("Password", type="password")
+                st.markdown(f"<h2 style='text-align: center; color: #2b5876; margin-bottom: 20px;'>{user_type.title()} Login</h2>", unsafe_allow_html=True)
                 
-                if st.form_submit_button("Login"):
+                st.markdown("##### 👤 Username")
+                username = st.text_input("", placeholder="Enter your username", key="username_input")
+                
+                st.markdown("##### 🔒 Password")
+                password = st.text_input("", type="password", placeholder="Enter your password", key="password_input")
+                
+                if st.form_submit_button("Login 🚀"):
                     if self.verify_user(username, password, user_type):
-                        st.session_state.authenticated = True
-                        st.session_state.user_type = user_type
-                        st.session_state.username = username
-                        st.success(f"Welcome {username}!")
+                        st.success("🎉 Welcome {}!".format(username))
                         st.rerun()
                     else:
-                        st.error("Invalid credentials")
+                        st.error("❌ Invalid credentials")
 
         # Show signup form
         elif hasattr(st.session_state, 'show_signup') and st.session_state.show_signup:
             with st.form("signup_form"):
-                st.subheader("Sign Up")
-                new_username = st.text_input("Username")
-                new_password = st.text_input("Password", type="password")
-                confirm_password = st.text_input("Confirm Password", type="password")
-                user_type = st.selectbox("User Type", ["normal", "admin"])
+                st.markdown("<h2 style='text-align: center; color: #2b5876; margin-bottom: 20px;'>Create Account</h2>", unsafe_allow_html=True)
                 
-                if st.form_submit_button("Sign Up"):
+                st.markdown("##### 👤 Username")
+                new_username = st.text_input("", placeholder="Choose a username", key="new_username")
+                
+                st.markdown("##### 🔒 Password")
+                new_password = st.text_input("", type="password", placeholder="Create a password", key="new_password")
+                
+                st.markdown("##### 🔒 Confirm Password")
+                confirm_password = st.text_input("", type="password", placeholder="Confirm your password", key="confirm_password")
+                
+                st.markdown("##### 👥 User Type")
+                user_type = st.selectbox("", ["normal", "admin"], key="user_type")
+                
+                if st.form_submit_button("Sign Up ✨"):
                     if new_password != confirm_password:
-                        st.error("Passwords do not match!")
+                        st.error("❌ Passwords do not match!")
                     elif not new_username or not new_password:
-                        st.error("Please fill in all fields!")
+                        st.error("❌ Please fill in all fields!")
                     else:
                         if self.add_user(new_username, new_password, user_type):
-                            st.success("Account created successfully! Please login.")
+                            st.success("✅ Account created successfully! Please login.")
                             st.session_state.show_signup = False
                             st.rerun()
                         else:
-                            st.error("Username already exists!")
+                            st.error("❌ Username already exists!")
 
     def is_authenticated(self):
         """Check if user is authenticated"""
         return st.session_state.authenticated
 
     def get_user_type(self):
-        return st.session_state.user_type
+        """Get the current user type, defaults to 'normal' if not set"""
+        return st.session_state.get('user_type', 'normal')
 
     def get_username(self):
         return st.session_state.username

@@ -42,6 +42,17 @@ def init_db():
             )
         ''')
         
+        # Create login_data table for user authentication
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS login_data (
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE,
+                password TEXT,
+                user_type TEXT,
+                Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         conn.commit()
     except Exception as e:
         st.error(f"Error initializing database: {e}")
@@ -50,7 +61,7 @@ def init_db():
             conn.close()
 
 def insert_user_data(data):
-    """Insert user data into the database."""
+    """Insert or update user data in the database."""
     try:
         db_path = get_db_path()
         conn = sqlite3.connect(db_path)
@@ -64,30 +75,62 @@ def insert_user_data(data):
         if 'Actual_Skills' in data and isinstance(data['Actual_Skills'], (list, set)):
             data['Actual_Skills'] = ', '.join(data['Actual_Skills'])
         
-        # Insert data into database
-        cursor.execute('''
-            INSERT INTO user_data (
-                Name, Email, Resume_Score, Total_Page,
-                Predicted_Field, User_Level, Actual_Skills,
-                Recommended_Skills, Recommended_Courses, PDF_Name
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            data.get('Name', ''),
-            data.get('Email', ''),
-            data.get('Resume_Score', 0),
-            data.get('Total_Page', 0),
-            data.get('Predicted_Field', ''),
-            data.get('User_Level', ''),
-            data.get('Actual_Skills', ''),
-            data.get('Recommended_Skills', ''),
-            data.get('Recommended_Courses', ''),
-            data.get('PDF_Name', '')
-        ))
+        # Check if user already has a submission
+        cursor.execute('SELECT ID FROM user_data WHERE Email = ? AND Name = ?', 
+                      (data.get('Email', ''), data.get('Name', '')))
+        existing_entry = cursor.fetchone()
+        
+        if existing_entry:
+            # Update existing entry
+            cursor.execute('''
+                UPDATE user_data SET 
+                    Resume_Score = ?,
+                    Total_Page = ?,
+                    Predicted_Field = ?,
+                    User_Level = ?,
+                    Actual_Skills = ?,
+                    Recommended_Skills = ?,
+                    Recommended_Courses = ?,
+                    PDF_Name = ?,
+                    Timestamp = CURRENT_TIMESTAMP
+                WHERE Email = ? AND Name = ?
+            ''', (
+                data.get('Resume_Score', 0),
+                data.get('Total_Page', 0),
+                data.get('Predicted_Field', ''),
+                data.get('User_Level', ''),
+                data.get('Actual_Skills', ''),
+                data.get('Recommended_Skills', ''),
+                data.get('Recommended_Courses', ''),
+                data.get('PDF_Name', ''),
+                data.get('Email', ''),
+                data.get('Name', '')
+            ))
+        else:
+            # Insert new entry
+            cursor.execute('''
+                INSERT INTO user_data (
+                    Name, Email, Resume_Score, Total_Page,
+                    Predicted_Field, User_Level, Actual_Skills,
+                    Recommended_Skills, Recommended_Courses, PDF_Name
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                data.get('Name', ''),
+                data.get('Email', ''),
+                data.get('Resume_Score', 0),
+                data.get('Total_Page', 0),
+                data.get('Predicted_Field', ''),
+                data.get('User_Level', ''),
+                data.get('Actual_Skills', ''),
+                data.get('Recommended_Skills', ''),
+                data.get('Recommended_Courses', ''),
+                data.get('PDF_Name', '')
+            ))
         
         conn.commit()
         return True
     except Exception as e:
-        st.error(f"Error inserting data: {e}")
+        st.error(f"Error inserting/updating data: {e}")
         return False
     finally:
         if 'conn' in locals():
@@ -108,6 +151,67 @@ def get_user_data():
     except Exception as e:
         st.error(f"Error retrieving data: {e}")
         return [], []
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+def delete_user(email):
+    """Delete a user from both resume_data.db and users.db databases."""
+    success = True
+    
+    # Delete from resume_data.db
+    try:
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM user_data WHERE Email = ?', (email,))
+        conn.commit()
+    except Exception as e:
+        st.error(f"Error deleting from resume database: {e}")
+        success = False
+    finally:
+        if 'conn' in locals():
+            conn.close()
+    
+    # Delete from users.db
+    try:
+        conn = sqlite3.connect('users.db')
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM users WHERE username = ?', (email,))
+        # Also delete any applications
+        cursor.execute('DELETE FROM applications WHERE applicant_username = ?', (email,))
+        conn.commit()
+    except Exception as e:
+        st.error(f"Error deleting from users database: {e}")
+        success = False
+    finally:
+        if 'conn' in locals():
+            conn.close()
+            
+    return success
+
+def delete_admin(username):
+    """Delete an admin from users.db database."""
+    try:
+        # Delete from users.db
+        conn = sqlite3.connect('users.db')
+        cursor = conn.cursor()
+        
+        # Verify it's an admin before deleting
+        cursor.execute('SELECT user_type FROM users WHERE username = ?', (username,))
+        user = cursor.fetchone()
+        
+        if user and user[0] == 'admin':
+            cursor.execute('DELETE FROM users WHERE username = ?', (username,))
+            conn.commit()
+            return True
+        else:
+            st.error("User not found or not an admin.")
+            return False
+            
+    except Exception as e:
+        st.error(f"Error deleting admin: {e}")
+        return False
     finally:
         if 'conn' in locals():
             conn.close()

@@ -19,7 +19,10 @@ from custom_parser import CustomResumeParser
 from resume_scorer import ResumeScorer
 from course_recommender import CourseRecommender
 from constants import UPLOAD_DIR, DB_PATH, DB_FILE
-from database_utils import init_db, insert_user_data, get_user_data
+from database_utils import (
+    init_db, get_user_data, delete_user, delete_admin,
+    insert_user_data
+)
 from ui_utils import (
     get_custom_css, 
     show_header,
@@ -325,6 +328,38 @@ def main():
     if st.sidebar.button("Logout"):
         login_ui.logout()
         st.rerun()
+
+    # Add delete account section in sidebar
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### ⚠️ Account Management")
+    
+    # Create two columns for the delete button and confirmation
+    del_col1, del_col2 = st.sidebar.columns(2)
+    
+    if "show_delete_confirmation" not in st.session_state:
+        st.session_state.show_delete_confirmation = False
+    
+    if del_col1.button("Delete Account", type="secondary"):
+        st.session_state.show_delete_confirmation = True
+    
+    if st.session_state.show_delete_confirmation:
+        st.sidebar.warning("⚠️ This action cannot be undone!")
+        confirm_col1, confirm_col2 = st.sidebar.columns(2)
+        
+        if confirm_col1.button("Yes, Delete", type="primary", key="confirm_delete"):
+            if user_type == "admin":
+                if delete_admin(st.session_state.username):
+                    st.sidebar.success("Admin account deleted successfully!")
+                    login_ui.logout()
+                    st.rerun()
+            else:
+                if delete_user(st.session_state.username):
+                    st.sidebar.success("User account deleted successfully!")
+                    login_ui.logout()
+                    st.rerun()
+        
+        if confirm_col2.button("Cancel", type="secondary", key="cancel_delete"):
+            st.session_state.show_delete_confirmation = False
 
     # Show application status for normal users in sidebar
     if user_type == "normal":
@@ -1426,7 +1461,7 @@ def main():
                     ">
                         <h2 style="
                             color: white;
-                            margin-bottom: 15px;
+                            margin: 0 0 10px 0;
                             font-size: 24px;
                             display: flex;
                             align-items: center;

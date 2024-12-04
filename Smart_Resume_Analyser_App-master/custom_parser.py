@@ -42,25 +42,17 @@ class CustomResumeParser:
             return text
             
     def extract_name(self):
-        """
-        Extract name from resume text using multiple methods:
-        1. Look for common name patterns at the start of the resume
-        2. Use NLTK's Named Entity Recognition
-        3. Look for name after common resume headers
-        """
+        """Extract name from resume text"""
         try:
             # First few lines are most likely to contain the name
-            first_lines = '\n'.join(self.text_lines[:5])
+            first_lines = '\n'.join(self.text_lines[:10])
             
-            # Method 1: Common name pattern at the start
-            # This pattern looks for 2-3 word combinations with proper capitalization
-            name_pattern = r'^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2}$'
-            for line in self.text_lines[:5]:
-                line = line.strip()
-                if re.match(name_pattern, line):
-                    return line
+            # List of job titles to exclude
+            job_titles = ['data scientist', 'software engineer', 'developer', 'engineer', 'analyst',
+                         'manager', 'consultant', 'programmer', 'architect', 'designer',
+                         'lead', 'senior', 'junior', 'full stack', 'backend', 'frontend']
             
-            # Method 2: NLTK's Named Entity Recognition
+            # Method 1: NLTK's Named Entity Recognition (most reliable)
             try:
                 tokens = nltk.word_tokenize(first_lines)
                 pos_tags = nltk.pos_tag(tokens)
@@ -71,37 +63,42 @@ class CustomResumeParser:
                 for chunk in chunks:
                     if hasattr(chunk, 'label') and chunk.label() == 'PERSON':
                         name = ' '.join(c[0] for c in chunk.leaves())
-                        names.append(name)
+                        # Verify it's not a job title
+                        if len(name.split()) >= 2 and not any(title in name.lower() for title in job_titles):
+                            names.append(name)
                 
                 if names:
-                    # Return the longest name found (likely to be full name)
-                    return max(names, key=len)
+                    # Return the first valid name found
+                    return names[0]
             except Exception:
-                pass  # Continue with other methods if NLTK fails
+                pass
             
-            # Method 3: Look for name after common resume headers
-            name_headers = ['name:', 'full name:', 'candidate name:']
-            for line in self.text_lines[:10]:  # Check first 10 lines
+            # Method 2: Look for name after common resume headers
+            name_headers = ['name:', 'full name:', 'candidate name:', 'applicant:']
+            for line in self.text_lines[:10]:
                 line_lower = line.lower()
                 for header in name_headers:
                     if line_lower.startswith(header):
                         name = line[len(header):].strip()
-                        if name:  # Verify it's not empty
+                        # Verify it's not a job title
+                        if len(name.split()) >= 2 and not any(title in name.lower() for title in job_titles):
                             return name
             
-            # If no name found, look for first capitalized words
+            # Method 3: Look for properly capitalized name pattern at the start
+            name_pattern = r'^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2}$'
             for line in self.text_lines[:5]:
-                words = line.split()
-                if len(words) >= 2:  # At least first and last name
-                    potential_name = ' '.join(w for w in words if w[0].isupper())
-                    if potential_name and len(potential_name.split()) >= 2:
-                        return potential_name
+                line = line.strip()
+                if re.match(name_pattern, line):
+                    # Verify it's not a job title
+                    if not any(title in line.lower() for title in job_titles):
+                        return line
             
-            return ''  # Return empty string if no name found
+            # If no name found with above methods, return Unknown
+            return 'Unknown'
             
         except Exception as e:
             print(f"Error in name extraction: {str(e)}")
-            return ''
+            return 'Unknown'
         
     def extract_email(self):
         email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
@@ -115,16 +112,58 @@ class CustomResumeParser:
     
     def extract_skills(self):
         skills_pattern = [
-            'python', 'java', 'c++', 'ruby', 'matlab', 'javascript',
-            'hadoop', 'spark', 'aws', 'docker', 'kubernetes',
-            'php', 'sql', 'mysql', 'postgresql', 'mongodb', 'redis',
-            'html', 'css', 'react', 'angular', 'vue', 'node',
-            'machine learning', 'deep learning', 'nlp', 'computer vision'
+            # Programming Languages
+            'python', 'java', 'c++', 'ruby', 'matlab', 'javascript', 'php', 'typescript',
+            'scala', 'kotlin', 'swift', 'r', 'golang', 'rust', 'perl',
+            
+            # Web Technologies
+            'html', 'css', 'react', 'angular', 'vue', 'node', 'express', 'django',
+            'flask', 'spring', 'asp.net', 'jquery', 'bootstrap', 'sass', 'less',
+            
+            # Databases
+            'sql', 'mysql', 'postgresql', 'mongodb', 'redis', 'oracle', 'cassandra',
+            'elasticsearch', 'dynamodb', 'firebase',
+            
+            # Cloud & DevOps
+            'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'jenkins', 'git', 'terraform',
+            'ansible', 'circleci', 'travis', 'nginx', 'apache',
+            
+            # Big Data & ML
+            'hadoop', 'spark', 'kafka', 'airflow', 'machine learning', 'deep learning',
+            'nlp', 'computer vision', 'tensorflow', 'pytorch', 'scikit-learn', 'pandas',
+            'numpy', 'scipy', 'matplotlib', 'seaborn',
+            
+            # Mobile Development
+            'android', 'ios', 'react native', 'flutter', 'xamarin', 'ionic',
+            
+            # Other Tools & Technologies
+            'jira', 'confluence', 'slack', 'trello', 'postman', 'swagger',
+            'selenium', 'junit', 'jest', 'mocha', 'cypress'
         ]
         
         found_skills = []
         text_lower = self.text.lower()
+        
+        # Look for exact matches
         for skill in skills_pattern:
+            if skill in text_lower:
+                found_skills.append(skill)
+        
+        # Look for variations with dots (e.g., asp.net)
+        text_no_dots = text_lower.replace('.', '')
+        for skill in skills_pattern:
+            skill_no_dots = skill.replace('.', '')
+            if skill_no_dots in text_no_dots and skill not in found_skills:
+                found_skills.append(skill)
+        
+        # Look for skills in education section (degrees, certifications)
+        education_skills = [
+            'computer science', 'software engineering', 'information technology',
+            'data science', 'artificial intelligence', 'web development',
+            'cloud computing', 'cybersecurity', 'network engineering'
+        ]
+        
+        for skill in education_skills:
             if skill in text_lower:
                 found_skills.append(skill)
                 
