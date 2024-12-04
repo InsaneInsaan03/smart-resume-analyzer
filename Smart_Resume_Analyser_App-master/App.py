@@ -312,8 +312,10 @@ def main():
         login_ui.render_login_ui()
         return
     
-    # Get user type
+    # Get user type and ensure it's not None
     user_type = login_ui.get_user_type()
+    if user_type is None:
+        user_type = 'normal'  # Set a default value
     
     # Show navigation bar with logout option
     st.markdown("""
@@ -323,7 +325,7 @@ def main():
             </div>
             <a href="#" class="nav-item" id="logout-btn">Logout</a>
         </div>
-    """.format(login_ui.get_username(), user_type.title()), unsafe_allow_html=True)
+    """.format(login_ui.get_username() or 'User', user_type.title()), unsafe_allow_html=True)
     
     if st.sidebar.button("Logout"):
         login_ui.logout()
